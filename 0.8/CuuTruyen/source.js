@@ -2588,7 +2588,9 @@ class CuuTruyen {
             header: 'Source Settings',
             rows: async () => {
                 return [
+                    (0, CuuTruyenSetting_1.accountSettings)(this.stateManager),
                     (0, CuuTruyenSetting_1.domainSettings)(this.stateManager),
+                    (0, CuuTruyenSetting_1.clearCredentials)(this.stateManager),
                     (0, CuuTruyenSetting_1.resetSettings)(this.stateManager)
                 ];
             },
@@ -2598,14 +2600,68 @@ class CuuTruyen {
     getMangaShareUrl(mangaId) {
         return `${this.getBaseUrl()}/mangas/${mangaId}`;
     }
+    // Login to CuuTruyen and get auth token
+    async login() {
+        const username = await (0, CuuTruyenSetting_1.getUsername)(this.stateManager);
+        const password = await (0, CuuTruyenSetting_1.getPassword)(this.stateManager);
+        if (!username || !password) {
+            throw new Error('Username and password are required. Please configure in settings.');
+        }
+        const url = `${await this.getApiUrl()}/login`;
+        const request = App.createRequest({
+            url,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json, text/plain, */*',
+                'Origin': await this.getBaseUrl(),
+                'Referer': `${await this.getBaseUrl()}/login`,
+            },
+            data: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+        });
+        const response = await this.requestManager.schedule(request, 1);
+        if (!response.data) {
+            throw new Error('Login failed: No response data');
+        }
+        const result = JSON.parse(response.data);
+        if (result.auth_token) {
+            // Cache token with 7-day expiry
+            await (0, CuuTruyenSetting_1.setAuthToken)(this.stateManager, result.auth_token);
+            await (0, CuuTruyenSetting_1.setTokenExpiry)(this.stateManager, Date.now() + 7 * 24 * 60 * 60 * 1000);
+            return result.auth_token;
+        }
+        throw new Error('Login failed: No auth token in response');
+    }
+    // Get cached auth token or login if expired
+    async getValidAuthToken() {
+        const token = await (0, CuuTruyenSetting_1.getAuthToken)(this.stateManager);
+        const expiry = await (0, CuuTruyenSetting_1.getTokenExpiry)(this.stateManager);
+        // Return cached token if still valid
+        if (token && expiry > Date.now()) {
+            return token;
+        }
+        // Token expired or missing, try to login
+        const username = await (0, CuuTruyenSetting_1.getUsername)(this.stateManager);
+        const password = await (0, CuuTruyenSetting_1.getPassword)(this.stateManager);
+        if (username && password) {
+            return await this.login();
+        }
+        return '';
+    }
     async apiRequest(endpoint, params = '') {
+        const token = await this.getValidAuthToken();
         const url = `${await this.getApiUrl()}/${endpoint}${params ? `?${params}` : ''}`;
+        const headers = {
+            'Accept': 'application/json, text/plain, */*',
+        };
+        // Add auth token if available
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
         const request = App.createRequest({
             url,
             method: 'GET',
-            headers: {
-                'Accept': 'application/json, text/plain, */*',
-            },
+            headers,
         });
         const response = await this.requestManager.schedule(request, 1);
         if (!response.data) {
@@ -3026,7 +3082,7 @@ exports.Parser = Parser;
 },{}],68:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.resetSettings = exports.domainSettings = exports.getDomain = void 0;
+exports.clearCredentials = exports.accountSettings = exports.resetSettings = exports.domainSettings = exports.setTokenExpiry = exports.getTokenExpiry = exports.setAuthToken = exports.getAuthToken = exports.getPassword = exports.getUsername = exports.getDomain = void 0;
 var Domains;
 (function (Domains) {
     Domains["CUUTRUYEN"] = "cuutruyen.net";
@@ -3039,6 +3095,32 @@ const getDomain = async (stateManager) => {
     return await stateManager.retrieve('domain') ?? Domains.CUUTRUYEN;
 };
 exports.getDomain = getDomain;
+// Auth credentials getters
+const getUsername = async (stateManager) => {
+    return await stateManager.retrieve('username') ?? '';
+};
+exports.getUsername = getUsername;
+const getPassword = async (stateManager) => {
+    return await stateManager.retrieve('password') ?? '';
+};
+exports.getPassword = getPassword;
+// Token caching (expires in 7 days)
+const getAuthToken = async (stateManager) => {
+    return await stateManager.retrieve('auth_token') ?? '';
+};
+exports.getAuthToken = getAuthToken;
+const setAuthToken = async (stateManager, token) => {
+    await stateManager.store('auth_token', token);
+};
+exports.setAuthToken = setAuthToken;
+const getTokenExpiry = async (stateManager) => {
+    return await stateManager.retrieve('token_expiry') ?? 0;
+};
+exports.getTokenExpiry = getTokenExpiry;
+const setTokenExpiry = async (stateManager, expiry) => {
+    await stateManager.store('token_expiry', expiry);
+};
+exports.setTokenExpiry = setTokenExpiry;
 const domainSettings = (stateManager) => {
     return App.createDUINavigationButton({
         id: 'domain_settings',
@@ -3105,6 +3187,83 @@ function resetSettings(stateManager) {
     });
 }
 exports.resetSettings = resetSettings;
+// Account settings for login
+const accountSettings = (stateManager) => {
+    return App.createDUINavigationButton({
+        id: 'account_settings',
+        label: 'Account Settings',
+        form: App.createDUIForm({
+            sections: async () => [
+                App.createDUISection({
+                    isHidden: false,
+                    id: 'credentials',
+                    header: 'CuuTruyen Account',
+                    footer: 'Enter your CuuTruyen account credentials to access authenticated content. Your auth token will be saved after successful login.',
+                    rows: async () => {
+                        return [
+                            App.createDUIInputField({
+                                id: 'username',
+                                label: 'Username',
+                                value: App.createDUIBinding({
+                                    get: async () => await (0, exports.getUsername)(stateManager),
+                                    set: async (value) => {
+                                        await stateManager.store('username', value);
+                                    }
+                                })
+                            }),
+                            App.createDUISecureInputField({
+                                id: 'password',
+                                label: 'Password',
+                                value: App.createDUIBinding({
+                                    get: async () => await (0, exports.getPassword)(stateManager),
+                                    set: async (value) => {
+                                        await stateManager.store('password', value);
+                                    }
+                                })
+                            })
+                        ];
+                    }
+                }),
+                App.createDUISection({
+                    isHidden: false,
+                    id: 'auth_status',
+                    header: 'Authentication Status',
+                    rows: async () => {
+                        const token = await (0, exports.getAuthToken)(stateManager);
+                        const expiry = await (0, exports.getTokenExpiry)(stateManager);
+                        const now = Date.now();
+                        const isValid = token && expiry > now;
+                        let statusLabel = '❌ Not Logged In';
+                        if (isValid) {
+                            const daysLeft = Math.ceil((expiry - now) / (1000 * 60 * 60 * 24));
+                            statusLabel = `✅ Logged In (${daysLeft} days left)`;
+                        }
+                        return [
+                            App.createDUILabel({
+                                id: 'token_status',
+                                label: statusLabel
+                            })
+                        ];
+                    }
+                })
+            ]
+        })
+    });
+};
+exports.accountSettings = accountSettings;
+function clearCredentials(stateManager) {
+    return App.createDUIButton({
+        id: 'clear_credentials',
+        label: 'Logout / Clear Credentials',
+        onTap: async () => {
+            await stateManager.store('username', '');
+            await stateManager.store('password', '');
+            await stateManager.store('auth_token', '');
+            await stateManager.store('token_expiry', 0);
+        }
+    });
+}
+exports.clearCredentials = clearCredentials;
 
 },{}]},{},[65])(65)
 });
