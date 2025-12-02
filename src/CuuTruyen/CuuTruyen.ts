@@ -25,7 +25,15 @@ import { Parser } from './CuuTruyenParser';
 import { 
     getDomain, 
     domainSettings,
-    resetSettings 
+    resetSettings,
+    accountSettings,
+    clearCredentials,
+    getUsername,
+    getPassword,
+    getAuthToken,
+    setAuthToken,
+    getTokenExpiry,
+    setTokenExpiry
 } from './CuuTruyenSetting';
 import { unscrambleImage } from './CuuTruyenDrm';
 
@@ -147,7 +155,9 @@ export class CuuTruyen implements ChapterProviding, MangaProviding, SearchResult
                 header: 'Source Settings',
                 rows: async () => {
                     return [
+                        accountSettings(this.stateManager),
                         domainSettings(this.stateManager),
+                        clearCredentials(this.stateManager),
                         resetSettings(this.stateManager)
                     ];
                 },
@@ -161,14 +171,82 @@ export class CuuTruyen implements ChapterProviding, MangaProviding, SearchResult
         return `${this.getBaseUrl()}/mangas/${mangaId}`;
     }
 
+    // Login to CuuTruyen and get auth token
+    private async login(): Promise<string> {
+        const username = await getUsername(this.stateManager);
+        const password = await getPassword(this.stateManager);
+        
+        if (!username || !password) {
+            throw new Error('Username and password are required. Please configure in settings.');
+        }
+
+        const url = `${await this.getApiUrl()}/login`;
+        const request = App.createRequest({
+            url,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'Accept': 'application/json, text/plain, */*',
+                'Origin': await this.getBaseUrl(),
+                'Referer': `${await this.getBaseUrl()}/login`,
+            },
+            data: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+        });
+
+        const response = await this.requestManager.schedule(request, 1);
+        if (!response.data) {
+            throw new Error('Login failed: No response data');
+        }
+
+        const result = JSON.parse(response.data as string);
+        if (result.auth_token) {
+            // Cache token with 7-day expiry
+            await setAuthToken(this.stateManager, result.auth_token);
+            await setTokenExpiry(this.stateManager, Date.now() + 7 * 24 * 60 * 60 * 1000);
+            return result.auth_token;
+        }
+
+        throw new Error('Login failed: No auth token in response');
+    }
+
+    // Get cached auth token or login if expired
+    private async getValidAuthToken(): Promise<string> {
+        const token = await getAuthToken(this.stateManager);
+        const expiry = await getTokenExpiry(this.stateManager);
+        
+        // Return cached token if still valid
+        if (token && expiry > Date.now()) {
+            return token;
+        }
+        
+        // Token expired or missing, try to login
+        const username = await getUsername(this.stateManager);
+        const password = await getPassword(this.stateManager);
+        
+        if (username && password) {
+            return await this.login();
+        }
+        
+        return '';
+    }
+
     private async apiRequest(endpoint: string, params = ''): Promise<any> {
+        const token = await this.getValidAuthToken();
         const url = `${await this.getApiUrl()}/${endpoint}${params ? `?${params}` : ''}`;
+        
+        const headers: Record<string, string> = {
+            'Accept': 'application/json, text/plain, */*',
+        };
+        
+        // Add auth token if available
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+        
         const request = App.createRequest({
             url,
             method: 'GET',
-            headers: {
-                'Accept': 'application/json, text/plain, */*',
-            },
+            headers,
         });
         const response = await this.requestManager.schedule(request, 1);
         if (!response.data) {
