@@ -211,20 +211,25 @@ export class CuuTruyen implements ChapterProviding, MangaProviding, SearchResult
 
     // Get cached auth token or login if expired
     private async getValidAuthToken(): Promise<string> {
-        const token = await getAuthToken(this.stateManager);
-        const expiry = await getTokenExpiry(this.stateManager);
-        
-        // Return cached token if still valid
-        if (token && expiry > Date.now()) {
-            return token;
-        }
-        
-        // Token expired or missing, try to login
-        const username = await getUsername(this.stateManager);
-        const password = await getPassword(this.stateManager);
-        
-        if (username && password) {
-            return await this.login();
+        try {
+            const token = await getAuthToken(this.stateManager);
+            const expiry = await getTokenExpiry(this.stateManager);
+            
+            // Return cached token if still valid
+            if (token && expiry > Date.now()) {
+                return token;
+            }
+            
+            // Token expired or missing, try to login
+            const username = await getUsername(this.stateManager);
+            const password = await getPassword(this.stateManager);
+            
+            if (username && password) {
+                return await this.login();
+            }
+        } catch (error) {
+            // Login failed, continue without auth
+            console.log('Auth failed, continuing without authentication');
         }
         
         return '';
@@ -252,7 +257,14 @@ export class CuuTruyen implements ChapterProviding, MangaProviding, SearchResult
         if (!response.data) {
             throw new Error('API response data is empty or undefined.');
         }
-        return JSON.parse(response.data as string);
+        
+        const responseText = response.data as string;
+        // Check if response is HTML (error page) instead of JSON
+        if (responseText.trim().startsWith('<')) {
+            throw new Error('API returned HTML instead of JSON. The server may be down or blocking requests.');
+        }
+        
+        return JSON.parse(responseText);
     }
 
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
