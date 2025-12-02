@@ -2588,7 +2588,7 @@ class CuuTruyen {
             header: 'Source Settings',
             rows: async () => {
                 return [
-                    (0, CuuTruyenSetting_1.accountSettings)(this.stateManager),
+                    (0, CuuTruyenSetting_1.accountSettings)(this.stateManager, this.requestManager),
                     (0, CuuTruyenSetting_1.domainSettings)(this.stateManager),
                     (0, CuuTruyenSetting_1.clearCredentials)(this.stateManager),
                     (0, CuuTruyenSetting_1.resetSettings)(this.stateManager)
@@ -3093,7 +3093,7 @@ exports.Parser = Parser;
 },{}],68:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clearCredentials = exports.accountSettings = exports.resetSettings = exports.domainSettings = exports.setTokenExpiry = exports.getTokenExpiry = exports.setAuthToken = exports.getAuthToken = exports.getPassword = exports.getUsername = exports.getDomain = void 0;
+exports.clearCredentials = exports.accountSettings = exports.resetSettings = exports.domainSettings = exports.performLogin = exports.setTokenExpiry = exports.getTokenExpiry = exports.setAuthToken = exports.getAuthToken = exports.getPassword = exports.getUsername = exports.getDomain = void 0;
 var Domains;
 (function (Domains) {
     Domains["CUUTRUYEN"] = "cuutruyen.net";
@@ -3132,6 +3132,43 @@ const setTokenExpiry = async (stateManager, expiry) => {
     await stateManager.store('token_expiry', expiry);
 };
 exports.setTokenExpiry = setTokenExpiry;
+// Login function
+const performLogin = async (stateManager, requestManager) => {
+    const username = await (0, exports.getUsername)(stateManager);
+    const password = await (0, exports.getPassword)(stateManager);
+    if (!username || !password) {
+        throw new Error('Please enter username and password first');
+    }
+    const domain = await (0, exports.getDomain)(stateManager);
+    const url = `https://${domain}/api/v2/login`;
+    const request = App.createRequest({
+        url,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json, text/plain, */*',
+            'Origin': `https://${domain}`,
+            'Referer': `https://${domain}/login`,
+        },
+        data: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+    });
+    const response = await requestManager.schedule(request, 1);
+    if (!response.data) {
+        throw new Error('Login failed: No response');
+    }
+    const responseText = response.data;
+    if (responseText.trim().startsWith('<')) {
+        throw new Error('Login failed: Server returned an error page');
+    }
+    const result = JSON.parse(responseText);
+    if (result.auth_token) {
+        await (0, exports.setAuthToken)(stateManager, result.auth_token);
+        await (0, exports.setTokenExpiry)(stateManager, Date.now() + 7 * 24 * 60 * 60 * 1000);
+        return result.auth_token;
+    }
+    throw new Error(result.error || 'Login failed: Invalid credentials');
+};
+exports.performLogin = performLogin;
 const domainSettings = (stateManager) => {
     return App.createDUINavigationButton({
         id: 'domain_settings',
@@ -3199,7 +3236,7 @@ function resetSettings(stateManager) {
 }
 exports.resetSettings = resetSettings;
 // Account settings for login
-const accountSettings = (stateManager) => {
+const accountSettings = (stateManager, requestManager) => {
     return App.createDUINavigationButton({
         id: 'account_settings',
         label: 'Account Settings',
@@ -3209,7 +3246,7 @@ const accountSettings = (stateManager) => {
                     isHidden: false,
                     id: 'credentials',
                     header: 'CuuTruyen Account',
-                    footer: 'Enter your CuuTruyen account credentials to access authenticated content. Your auth token will be saved after successful login.',
+                    footer: 'Enter your CuuTruyen account credentials, then tap Login to authenticate.',
                     rows: async () => {
                         return [
                             App.createDUIInputField({
@@ -3231,6 +3268,22 @@ const accountSettings = (stateManager) => {
                                         await stateManager.store('password', value);
                                     }
                                 })
+                            })
+                        ];
+                    }
+                }),
+                App.createDUISection({
+                    isHidden: false,
+                    id: 'login_section',
+                    header: 'Login',
+                    rows: async () => {
+                        return [
+                            App.createDUIButton({
+                                id: 'login_button',
+                                label: 'Login',
+                                onTap: async () => {
+                                    await (0, exports.performLogin)(stateManager, requestManager);
+                                }
                             })
                         ];
                     }
