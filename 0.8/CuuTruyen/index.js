@@ -2634,17 +2634,23 @@ class CuuTruyen {
     }
     // Get cached auth token or login if expired
     async getValidAuthToken() {
-        const token = await (0, CuuTruyenSetting_1.getAuthToken)(this.stateManager);
-        const expiry = await (0, CuuTruyenSetting_1.getTokenExpiry)(this.stateManager);
-        // Return cached token if still valid
-        if (token && expiry > Date.now()) {
-            return token;
+        try {
+            const token = await (0, CuuTruyenSetting_1.getAuthToken)(this.stateManager);
+            const expiry = await (0, CuuTruyenSetting_1.getTokenExpiry)(this.stateManager);
+            // Return cached token if still valid
+            if (token && expiry > Date.now()) {
+                return token;
+            }
+            // Token expired or missing, try to login
+            const username = await (0, CuuTruyenSetting_1.getUsername)(this.stateManager);
+            const password = await (0, CuuTruyenSetting_1.getPassword)(this.stateManager);
+            if (username && password) {
+                return await this.login();
+            }
         }
-        // Token expired or missing, try to login
-        const username = await (0, CuuTruyenSetting_1.getUsername)(this.stateManager);
-        const password = await (0, CuuTruyenSetting_1.getPassword)(this.stateManager);
-        if (username && password) {
-            return await this.login();
+        catch (error) {
+            // Login failed, continue without auth
+            console.log('Auth failed, continuing without authentication');
         }
         return '';
     }
@@ -2667,7 +2673,12 @@ class CuuTruyen {
         if (!response.data) {
             throw new Error('API response data is empty or undefined.');
         }
-        return JSON.parse(response.data);
+        const responseText = response.data;
+        // Check if response is HTML (error page) instead of JSON
+        if (responseText.trim().startsWith('<')) {
+            throw new Error('API returned HTML instead of JSON. The server may be down or blocking requests.');
+        }
+        return JSON.parse(responseText);
     }
     async getMangaDetails(mangaId) {
         const response = await this.apiRequest(`mangas/${mangaId}`);
