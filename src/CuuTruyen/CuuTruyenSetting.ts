@@ -1,7 +1,8 @@
 import {
     DUIButton,
     DUINavigationButton,
-    SourceStateManager
+    SourceStateManager,
+    RequestManager
 } from '@paperback/types';
 
 enum Domains {
@@ -40,6 +41,50 @@ export const getTokenExpiry = async (stateManager: SourceStateManager): Promise<
 
 export const setTokenExpiry = async (stateManager: SourceStateManager, expiry: number): Promise<void> => {
     await stateManager.store('token_expiry', expiry);
+};
+
+// Login function
+export const performLogin = async (stateManager: SourceStateManager, requestManager: RequestManager): Promise<string> => {
+    const username = await getUsername(stateManager);
+    const password = await getPassword(stateManager);
+    
+    if (!username || !password) {
+        throw new Error('Please enter username and password first');
+    }
+
+    const domain = await getDomain(stateManager);
+    const url = `https://${domain}/api/v2/login`;
+    
+    const request = App.createRequest({
+        url,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json, text/plain, */*',
+            'Origin': `https://${domain}`,
+            'Referer': `https://${domain}/login`,
+        },
+        data: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+    });
+
+    const response = await requestManager.schedule(request, 1);
+    if (!response.data) {
+        throw new Error('Login failed: No response');
+    }
+
+    const responseText = response.data as string;
+    if (responseText.trim().startsWith('<')) {
+        throw new Error('Login failed: Server returned an error page');
+    }
+
+    const result = JSON.parse(responseText);
+    if (result.auth_token) {
+        await setAuthToken(stateManager, result.auth_token);
+        await setTokenExpiry(stateManager, Date.now() + 7 * 24 * 60 * 60 * 1000);
+        return result.auth_token;
+    }
+
+    throw new Error(result.error || 'Login failed: Invalid credentials');
 };
 
 export const domainSettings = (stateManager: SourceStateManager): DUINavigationButton => {
@@ -111,7 +156,7 @@ export function resetSettings(stateManager: SourceStateManager): DUIButton {
 }
 
 // Account settings for login
-export const accountSettings = (stateManager: SourceStateManager): DUINavigationButton => {
+export const accountSettings = (stateManager: SourceStateManager, requestManager: RequestManager): DUINavigationButton => {
     return App.createDUINavigationButton({
         id: 'account_settings',
         label: 'Account Settings',
@@ -121,7 +166,7 @@ export const accountSettings = (stateManager: SourceStateManager): DUINavigation
                     isHidden: false,
                     id: 'credentials',
                     header: 'CuuTruyen Account',
-                    footer: 'Enter your CuuTruyen account credentials to access authenticated content. Your auth token will be saved after successful login.',
+                    footer: 'Enter your CuuTruyen account credentials, then tap Login to authenticate.',
                     rows: async () => {
                         return [
                             App.createDUIInputField({
@@ -143,6 +188,22 @@ export const accountSettings = (stateManager: SourceStateManager): DUINavigation
                                         await stateManager.store('password', value);
                                     }
                                 })
+                            })
+                        ];
+                    }
+                }),
+                App.createDUISection({
+                    isHidden: false,
+                    id: 'login_section',
+                    header: 'Login',
+                    rows: async () => {
+                        return [
+                            App.createDUIButton({
+                                id: 'login_button',
+                                label: 'Login',
+                                onTap: async () => {
+                                    await performLogin(stateManager, requestManager);
+                                }
                             })
                         ];
                     }

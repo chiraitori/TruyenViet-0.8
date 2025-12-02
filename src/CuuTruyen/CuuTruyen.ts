@@ -155,7 +155,7 @@ export class CuuTruyen implements ChapterProviding, MangaProviding, SearchResult
                 header: 'Source Settings',
                 rows: async () => {
                     return [
-                        accountSettings(this.stateManager),
+                        accountSettings(this.stateManager, this.requestManager),
                         domainSettings(this.stateManager),
                         clearCredentials(this.stateManager),
                         resetSettings(this.stateManager)
