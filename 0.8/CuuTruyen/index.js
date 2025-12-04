@@ -3207,6 +3207,8 @@ const domainSettings = (stateManager) => {
                 App.createDUISection({
                     isHidden: false,
                     id: 'content',
+                    header: 'Select Domain',
+                    footer: '✅ cuutruyen.net - Hoạt động\n⚠️ nettrom.com, hetcuutruyen.net - Bị Cloudflare block\n❌ cuutruyenpip7z.site, cuutruyen5c844.site - Không truy cập được',
                     rows: async () => {
                         await Promise.all([
                             (0, exports.getDomain)(stateManager)
@@ -3225,15 +3227,15 @@ const domainSettings = (stateManager) => {
                                 labelResolver: async (option) => {
                                     switch (option) {
                                         case Domains.CUUTRUYEN:
-                                            return 'Cuu Truyen (.net)';
+                                            return '✅ Cuu Truyen (.net)';
                                         case Domains.NETTROM:
-                                            return 'Net Trom (.com)';
+                                            return '⚠️ Net Trom (.com) - CF Block';
                                         case Domains.HETCUUTRUYEN:
-                                            return 'Het Cuu Truyen (.net)';
+                                            return '⚠️ Het Cuu Truyen (.net) - CF Block';
                                         case Domains.CUUTRUYENPIP7Z:
-                                            return 'Cuu Truyen Pip7z (.site)';
+                                            return '❌ Cuu Truyen Pip7z (.site) - Dead';
                                         case Domains.CUUTRUYEN5C844:
-                                            return 'Cuu Truyen 5c844 (.site)';
+                                            return '❌ Cuu Truyen 5c844 (.site) - Dead';
                                         default:
                                             return option;
                                     }
