@@ -18,4 +18,4 @@ docs
 *.test.ts
 
 # mac stuff
-.DS_Store
+.DS_Storebundles/
