@@ -33,7 +33,9 @@ import {
     getAuthToken,
     setAuthToken,
     getTokenExpiry,
-    setTokenExpiry
+    setTokenExpiry,
+    getUserId,
+    setUserId
 } from './CuuTruyenSetting';
 import { unscrambleImage } from './CuuTruyenDrm';
 
@@ -185,14 +187,15 @@ export class CuuTruyen implements ChapterProviding, MangaProviding, SearchResult
             url,
             method: 'POST',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/plain, */*',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
                 'Accept-Language': 'en-US,en;q=0.9',
                 'Origin': await this.getBaseUrl(),
                 'Referer': `${await this.getBaseUrl()}/login`,
+                'cuutruyen-client': 'OfficialWebApp-20250805',
             },
-            data: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+            data: JSON.stringify({ username, password })
         });
 
         const response = await this.requestManager.schedule(request, 1);
@@ -204,6 +207,7 @@ export class CuuTruyen implements ChapterProviding, MangaProviding, SearchResult
         if (result.auth_token) {
             // Cache token with 7-day expiry
             await setAuthToken(this.stateManager, result.auth_token);
+            await setUserId(this.stateManager, String(result.data?.id ?? ''));
             await setTokenExpiry(this.stateManager, Date.now() + 7 * 24 * 60 * 60 * 1000);
             return result.auth_token;
         }
@@ -239,15 +243,22 @@ export class CuuTruyen implements ChapterProviding, MangaProviding, SearchResult
 
     private async apiRequest(endpoint: string, params = ''): Promise<any> {
         const token = await this.getValidAuthToken();
+        const userId = await getUserId(this.stateManager);
         const url = `${await this.getApiUrl()}/${endpoint}${params ? `?${params}` : ''}`;
         
         const headers: Record<string, string> = {
-            'Accept': 'application/json, text/plain, */*',
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'cuutruyen-client': 'OfficialWebApp-20250805',
         };
         
-        // Add auth token if available
+        // Add auth headers if available
         if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
+            headers['m4u_token'] = token;
+        }
+        if (userId) {
+            headers['m4u_uid'] = userId;
         }
         
         const request = App.createRequest({

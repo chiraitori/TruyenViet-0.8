@@ -1,0 +1,18 @@
+[
+  {
+    "name": "cf_clearance",
+    "value": "tdGj93awoSmEFQcAXcXo.Sx3dPv6qkjnaiZVa5_r7Ww-1764850870-1.2.1.1-4qFfbu2YHMYHIt0WIu9QMX3OO7KAzNiIDbiz1Ov6ixH6zcnR6.a0P3p2Keevw_tF0ffZuxAoF8GLjmI0Vsca__7MJRGR7BHngvfrJp0.tlHw.oVBm3lwAk3qVinHSuDDrGTA5Il.bPUKdlz29KnSfJ75SnC3Fmpx7I1WXfO2cSxq.itDyIGwaaUKpHIChZCNaCxC04Q0sZyGWcE3xNV0hktu_dlQbbKvpghr36m9kZA",
+    "domain": ".cuutruyen.net",
+    "path": "/",
+    "expires": 1796386870.426831,
+    "size": 310,
+    "httpOnly": true,
+    "secure": true,
+    "session": false,
+    "sameSite": "None",
+    "priority": "Medium",
+    "sameParty": false,
+    "sourceScheme": "Secure",
+    "partitionKey": "https://cuutruyen.net"
+  }
+]

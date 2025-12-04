@@ -43,6 +43,15 @@ export const setTokenExpiry = async (stateManager: SourceStateManager, expiry: n
     await stateManager.store('token_expiry', expiry);
 };
 
+// User ID for API requests
+export const getUserId = async (stateManager: SourceStateManager): Promise<string> => {
+    return (await stateManager.retrieve('user_id') as string) ?? '';
+};
+
+export const setUserId = async (stateManager: SourceStateManager, userId: string): Promise<void> => {
+    await stateManager.store('user_id', userId);
+};
+
 // Login function
 export const performLogin = async (stateManager: SourceStateManager, requestManager: RequestManager): Promise<string> => {
     const username = await getUsername(stateManager);
@@ -59,14 +68,15 @@ export const performLogin = async (stateManager: SourceStateManager, requestMana
         url,
         method: 'POST',
         headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
             'Accept-Language': 'en-US,en;q=0.9',
             'Origin': `https://${domain}`,
             'Referer': `https://${domain}/login`,
+            'cuutruyen-client': 'OfficialWebApp-20250805',
         },
-        data: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+        data: JSON.stringify({ username, password })
     });
 
     const response = await requestManager.schedule(request, 1);
@@ -82,6 +92,7 @@ export const performLogin = async (stateManager: SourceStateManager, requestMana
     const result = JSON.parse(responseText);
     if (result.auth_token) {
         await setAuthToken(stateManager, result.auth_token);
+        await setUserId(stateManager, String(result.data?.id ?? ''));
         await setTokenExpiry(stateManager, Date.now() + 7 * 24 * 60 * 60 * 1000);
         return result.auth_token;
     }
@@ -245,6 +256,7 @@ export function clearCredentials(stateManager: SourceStateManager): DUIButton {
             await stateManager.store('username', '');
             await stateManager.store('password', '');
             await stateManager.store('auth_token', '');
+            await stateManager.store('user_id', '');
             await stateManager.store('token_expiry', 0);
         }
     });
