@@ -62,18 +62,18 @@ export const performLogin = async (stateManager: SourceStateManager, requestMana
     }
 
     const domain = await getDomain(stateManager);
-    const url = `https://${domain}/api/v2/login`;
+    const baseUrl = `https://${domain}`;
+    const url = `${baseUrl}/api/v2/login`;
     
     const request = App.createRequest({
         url,
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
-            'Accept-Language': 'en-US,en;q=0.9',
-            'Origin': `https://${domain}`,
-            'Referer': `https://${domain}/login`,
+            'content-type': 'application/json',
+            'accept': 'application/json',
+            'accept-language': 'en-US,en;q=0.9,vi;q=0.8',
+            'origin': baseUrl,
+            'referer': `${baseUrl}/login`,
             'cuutruyen-client': 'OfficialWebApp-20250805',
         },
         data: JSON.stringify({ username, password })

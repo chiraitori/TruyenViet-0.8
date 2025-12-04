@@ -38,6 +38,7 @@
     "@paperback/types": "^0.8.0-alpha.47",
     "cheerio": "^1.0.0-rc.12",
     "entities": "^4.4.0",
-    "nodemon": "^2.0.22"
+    "nodemon": "^2.0.22",
+    "playwright": "^1.57.0"
   }
 }

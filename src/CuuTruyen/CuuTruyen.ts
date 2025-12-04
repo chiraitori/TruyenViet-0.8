@@ -91,7 +91,10 @@ export class CuuTruyen implements ChapterProviding, MangaProviding, SearchResult
                     ...(request.headers ?? {}),
                     ...{
                         'referer': `${await this.getBaseUrl()}/`,
-                        'user-agent': await this.requestManager.getDefaultUserAgent(),
+                        'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
+                        'accept': 'application/json, text/plain, */*',
+                        'accept-language': 'en-US,en;q=0.9,vi;q=0.8',
+                        'cuutruyen-client': 'OfficialWebApp-20250805',
                     }
                 };
                 return request;
@@ -182,17 +185,17 @@ export class CuuTruyen implements ChapterProviding, MangaProviding, SearchResult
             throw new Error('Username and password are required. Please configure in settings.');
         }
 
+        const baseUrl = await this.getBaseUrl();
         const url = `${await this.getApiUrl()}/login`;
         const request = App.createRequest({
             url,
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Origin': await this.getBaseUrl(),
-                'Referer': `${await this.getBaseUrl()}/login`,
+                'content-type': 'application/json',
+                'accept': 'application/json',
+                'accept-language': 'en-US,en;q=0.9,vi;q=0.8',
+                'origin': baseUrl,
+                'referer': `${baseUrl}/login`,
                 'cuutruyen-client': 'OfficialWebApp-20250805',
             },
             data: JSON.stringify({ username, password })
@@ -244,13 +247,15 @@ export class CuuTruyen implements ChapterProviding, MangaProviding, SearchResult
     private async apiRequest(endpoint: string, params = ''): Promise<any> {
         const token = await this.getValidAuthToken();
         const userId = await getUserId(this.stateManager);
+        const baseUrl = await this.getBaseUrl();
         const url = `${await this.getApiUrl()}/${endpoint}${params ? `?${params}` : ''}`;
         
         const headers: Record<string, string> = {
-            'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
-            'Accept-Language': 'en-US,en;q=0.9',
+            'accept': 'application/json',
+            'accept-language': 'en-US,en;q=0.9,vi;q=0.8',
             'cuutruyen-client': 'OfficialWebApp-20250805',
+            'referer': `${baseUrl}/`,
+            'origin': baseUrl,
         };
         
         // Add auth headers if available
