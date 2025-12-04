@@ -81,15 +81,26 @@ export const performLogin = async (stateManager: SourceStateManager, requestMana
 
     const response = await requestManager.schedule(request, 1);
     if (!response.data) {
-        throw new Error('Login failed: No response');
+        throw new Error('Login failed: No response from server');
     }
 
     const responseText = response.data as string;
+    // Debug: Check what we actually received
     if (responseText.trim().startsWith('<')) {
-        throw new Error('Login failed: Server returned an error page');
+        // Cloudflare or server error page
+        if (responseText.includes('Cloudflare')) {
+            throw new Error('Login failed: Cloudflare protection detected. Try again later.');
+        }
+        throw new Error('Login failed: Server returned HTML instead of JSON');
     }
 
-    const result = JSON.parse(responseText);
+    let result;
+    try {
+        result = JSON.parse(responseText);
+    } catch (e) {
+        throw new Error(`Login failed: Invalid response format - ${responseText.substring(0, 100)}`);
+    }
+    
     if (result.auth_token) {
         await setAuthToken(stateManager, result.auth_token);
         await setUserId(stateManager, String(result.data?.id ?? ''));
