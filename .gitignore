@@ -3,6 +3,7 @@ node_modules
 dist
 bundles
 tmp
+cuutruyen-analyze
 
 #compiled sources
 reference
