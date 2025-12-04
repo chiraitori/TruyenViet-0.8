@@ -2612,14 +2612,15 @@ class CuuTruyen {
             url,
             method: 'POST',
             headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-                'Accept': 'application/json, text/plain, */*',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
                 'Accept-Language': 'en-US,en;q=0.9',
                 'Origin': await this.getBaseUrl(),
                 'Referer': `${await this.getBaseUrl()}/login`,
+                'cuutruyen-client': 'OfficialWebApp-20250805',
             },
-            data: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+            data: JSON.stringify({ username, password })
         });
         const response = await this.requestManager.schedule(request, 1);
         if (!response.data) {
@@ -2629,6 +2630,7 @@ class CuuTruyen {
         if (result.auth_token) {
             // Cache token with 7-day expiry
             await (0, CuuTruyenSetting_1.setAuthToken)(this.stateManager, result.auth_token);
+            await (0, CuuTruyenSetting_1.setUserId)(this.stateManager, String(result.data?.id ?? ''));
             await (0, CuuTruyenSetting_1.setTokenExpiry)(this.stateManager, Date.now() + 7 * 24 * 60 * 60 * 1000);
             return result.auth_token;
         }
@@ -2658,13 +2660,20 @@ class CuuTruyen {
     }
     async apiRequest(endpoint, params = '') {
         const token = await this.getValidAuthToken();
+        const userId = await (0, CuuTruyenSetting_1.getUserId)(this.stateManager);
         const url = `${await this.getApiUrl()}/${endpoint}${params ? `?${params}` : ''}`;
         const headers = {
-            'Accept': 'application/json, text/plain, */*',
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'cuutruyen-client': 'OfficialWebApp-20250805',
         };
-        // Add auth token if available
+        // Add auth headers if available
         if (token) {
-            headers['Authorization'] = `Bearer ${token}`;
+            headers['m4u_token'] = token;
+        }
+        if (userId) {
+            headers['m4u_uid'] = userId;
         }
         const request = App.createRequest({
             url,
@@ -3095,7 +3104,7 @@ exports.Parser = Parser;
 },{}],68:[function(require,module,exports){
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.clearCredentials = exports.accountSettings = exports.resetSettings = exports.domainSettings = exports.performLogin = exports.setTokenExpiry = exports.getTokenExpiry = exports.setAuthToken = exports.getAuthToken = exports.getPassword = exports.getUsername = exports.getDomain = void 0;
+exports.clearCredentials = exports.accountSettings = exports.resetSettings = exports.domainSettings = exports.performLogin = exports.setUserId = exports.getUserId = exports.setTokenExpiry = exports.getTokenExpiry = exports.setAuthToken = exports.getAuthToken = exports.getPassword = exports.getUsername = exports.getDomain = void 0;
 var Domains;
 (function (Domains) {
     Domains["CUUTRUYEN"] = "cuutruyen.net";
@@ -3134,6 +3143,15 @@ const setTokenExpiry = async (stateManager, expiry) => {
     await stateManager.store('token_expiry', expiry);
 };
 exports.setTokenExpiry = setTokenExpiry;
+// User ID for API requests
+const getUserId = async (stateManager) => {
+    return await stateManager.retrieve('user_id') ?? '';
+};
+exports.getUserId = getUserId;
+const setUserId = async (stateManager, userId) => {
+    await stateManager.store('user_id', userId);
+};
+exports.setUserId = setUserId;
 // Login function
 const performLogin = async (stateManager, requestManager) => {
     const username = await (0, exports.getUsername)(stateManager);
@@ -3147,14 +3165,15 @@ const performLogin = async (stateManager, requestManager) => {
         url,
         method: 'POST',
         headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-            'Accept': 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
             'Accept-Language': 'en-US,en;q=0.9',
             'Origin': `https://${domain}`,
             'Referer': `https://${domain}/login`,
+            'cuutruyen-client': 'OfficialWebApp-20250805',
         },
-        data: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+        data: JSON.stringify({ username, password })
     });
     const response = await requestManager.schedule(request, 1);
     if (!response.data) {
@@ -3167,6 +3186,7 @@ const performLogin = async (stateManager, requestManager) => {
     const result = JSON.parse(responseText);
     if (result.auth_token) {
         await (0, exports.setAuthToken)(stateManager, result.auth_token);
+        await (0, exports.setUserId)(stateManager, String(result.data?.id ?? ''));
         await (0, exports.setTokenExpiry)(stateManager, Date.now() + 7 * 24 * 60 * 60 * 1000);
         return result.auth_token;
     }
@@ -3327,6 +3347,7 @@ function clearCredentials(stateManager) {
             await stateManager.store('username', '');
             await stateManager.store('password', '');
             await stateManager.store('auth_token', '');
+            await stateManager.store('user_id', '');
             await stateManager.store('token_expiry', 0);
         }
     });
