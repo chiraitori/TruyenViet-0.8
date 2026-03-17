@@ -97,10 +97,17 @@ export class Parser {
         return chapters;
     }
 
-    parseChapterDetails(json: any[]): string[] {
+    parseChapterDetails(json: any): string[] {
         const pages: string[] = [];
 
-        for (const page of json) {
+        // In case the API returns { pages: [...] } or { statusCode: 403 }
+        let pagesArray = Array.isArray(json) ? json : (json.pages ?? []);
+
+        if (!Array.isArray(pagesArray)) {
+            return pages;
+        }
+
+        for (const page of pagesArray) {
             if (typeof page === 'string') {
                 pages.push(page.startsWith('http') ? page : `${STORAGE_BASE}${page}`);
             } else if (page.url) {

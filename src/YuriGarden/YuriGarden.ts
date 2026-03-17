@@ -78,10 +78,25 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
             method: 'GET',
         });
         const response = await this.requestManager.schedule(request, 1);
-        if (response.status === 403 || response.status === 503) {
+        
+        let isCloudflareError = response.status === 403 || response.status === 503;
+        
+        if (!isCloudflareError && response.data) {
+            try {
+                const dataObj = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+                if (dataObj.statusCode === 403 || dataObj.message === 'Forbidden') {
+                    isCloudflareError = true;
+                }
+            } catch (e) {
+                // Ignore parse errors here, it might just be HTML from cloudflare
+            }
+        }
+
+        if (isCloudflareError) {
             throw new Error(`CLOUDFLARE BYPASS ERROR:\nPlease go to home page ${YuriGardenInfo.name} source and press the cloud icon.`);
         }
-        return response.data as string;
+        
+        return typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
     }
 
     async getCloudflareBypassRequestAsync(): Promise<Request> {
