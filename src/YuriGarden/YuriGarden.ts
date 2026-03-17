@@ -39,7 +39,7 @@ export const YuriGardenInfo: SourceInfo = {
             type: BadgeColor.GREEN
         }
     ],
-    intents: SourceIntents.MANGA_CHAPTERS | SourceIntents.HOMEPAGE_SECTIONS
+    intents: SourceIntents.MANGA_CHAPTERS | SourceIntents.HOMEPAGE_SECTIONS | SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
 };
 
 export class YuriGarden implements SearchResultsProviding, MangaProviding, ChapterProviding, HomePageSectionsProviding {
@@ -78,7 +78,22 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
             method: 'GET',
         });
         const response = await this.requestManager.schedule(request, 1);
+        if (response.status === 403 || response.status === 503) {
+            throw new Error(`CLOUDFLARE BYPASS ERROR:\nPlease go to home page ${YuriGardenInfo.name} source and press the cloud icon.`);
+        }
         return response.data as string;
+    }
+
+    async getCloudflareBypassRequestAsync(): Promise<Request> {
+        return App.createRequest({
+            url: DOMAIN,
+            method: 'GET',
+            headers: {
+                'referer': `${DOMAIN}/`,
+                'origin': `${DOMAIN}/`,
+                'user-agent': await this.requestManager.getDefaultUserAgent()
+            }
+        });
     }
 
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
