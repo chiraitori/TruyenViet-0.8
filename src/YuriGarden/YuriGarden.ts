@@ -21,28 +21,34 @@ import {
 
 import { Parser } from './YuriGardenParser';
 
-const DOMAIN = 'https://yurigarden.com/';
+const DOMAIN = 'https://yurigarden.com';
 const API_DOMAIN = 'https://api.yurigarden.com';
 
 export const YuriGardenInfo: SourceInfo = {
-    version: '1.0.0',
+    version: '1.0.1',
     name: 'YuriGarden',
     icon: 'icon.png',
     author: 'TruyenViet',
     authorWebsite: 'https://github.com/chiraitori',
     description: 'Extension that pulls manga from YuriGarden.',
-    contentRating: ContentRating.EVERYONE,
+    contentRating: ContentRating.ADULT,
     websiteBaseURL: DOMAIN,
     sourceTags: [
         {
             text: 'Yuri',
             type: BadgeColor.GREEN
+        },
+        {
+            text: 'Cloudflare',
+            type: BadgeColor.RED
         }
     ],
     intents: SourceIntents.MANGA_CHAPTERS | SourceIntents.HOMEPAGE_SECTIONS | SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
 };
 
 export class YuriGarden implements SearchResultsProviding, MangaProviding, ChapterProviding, HomePageSectionsProviding {
+
+    stateManager = App.createSourceStateManager();
 
     readonly requestManager = App.createRequestManager({
         requestsPerSecond: 4,
@@ -52,9 +58,10 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
                 request.headers = {
                     ...(request.headers ?? {}),
                     ...{
-                        'referer': DOMAIN,
+                        'referer': `${DOMAIN}/`,
                         'origin': DOMAIN,
                         'x-app-origin': DOMAIN,
+                        'x-custom-lang': 'vi',
                         'user-agent': await this.requestManager.getDefaultUserAgent(),
                     }
                 };
@@ -67,10 +74,14 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
     });
 
     getMangaShareUrl(mangaId: string): string {
-        return `${DOMAIN}comic/${mangaId}`;
+        return `${DOMAIN}/comic/${mangaId}`;
     }
 
     parser = new Parser();
+
+    private async getR18(): Promise<boolean> {
+        return (await this.stateManager.retrieve('r18') as boolean) ?? false;
+    }
 
     private async getAPI(url: string): Promise<string> {
         const request = App.createRequest({
@@ -78,9 +89,9 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
             method: 'GET',
         });
         const response = await this.requestManager.schedule(request, 1);
-        
+
         let isCloudflareError = response.status === 403 || response.status === 503;
-        
+
         if (!isCloudflareError && response.data) {
             try {
                 const dataObj = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
@@ -88,26 +99,48 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
                     isCloudflareError = true;
                 }
             } catch (e) {
-                // Ignore parse errors here, it might just be HTML from cloudflare
+                // might be HTML from Cloudflare challenge page
+                const dataStr = String(response.data);
+                if (dataStr.includes('cf-turnstile') || dataStr.includes('challenge-platform')) {
+                    isCloudflareError = true;
+                }
             }
         }
 
         if (isCloudflareError) {
             throw new Error(`CLOUDFLARE BYPASS ERROR:\nPlease go to home page ${YuriGardenInfo.name} source and press the cloud icon.`);
         }
-        
+
         return typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
     }
 
     async getCloudflareBypassRequestAsync(): Promise<Request> {
         return App.createRequest({
-            url: DOMAIN,
+            url: `${DOMAIN}/comic/466/4846`,
             method: 'GET',
             headers: {
                 'referer': `${DOMAIN}/`,
-                'origin': `${DOMAIN}/`,
+                'origin': DOMAIN,
                 'user-agent': await this.requestManager.getDefaultUserAgent()
             }
+        });
+    }
+
+    async getSourceMenu(): Promise<any> {
+        return App.createDUISection({
+            id: 'main',
+            header: 'Source Settings',
+            isHidden: false,
+            rows: async () => [
+                App.createDUISwitch({
+                    id: 'r18',
+                    label: 'Enable R18 Content',
+                    value: App.createDUIBinding({
+                        get: async () => (await this.stateManager.retrieve('r18') as boolean) ?? false,
+                        set: async (newValue: boolean) => await this.stateManager.store('r18', newValue),
+                    }),
+                }),
+            ],
         });
     }
 
@@ -133,6 +166,7 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
 
     async getSearchResults(query: SearchRequest, metadata: any): Promise<PagedResults> {
         const page = metadata?.page ?? 1;
+        const r18 = await this.getR18();
 
         const tags = query.includedTags?.map(tag => tag.id) ?? [];
         let statusFilter = '';
@@ -146,7 +180,7 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
             }
         }
 
-        let url = `${API_DOMAIN}/api/comics?page=${page}&limit=20`;
+        let url = `${API_DOMAIN}/api/comics?page=${page}&limit=20&r18=${r18}`;
 
         if (query.title) {
             url += `&search=${encodeURIComponent(query.title)}`;
@@ -173,6 +207,7 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
 
     async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
         console.log('YuriGarden Running...');
+        const r18 = await this.getR18();
         const sections: HomeSection[] = [
             App.createHomeSection({ id: 'new_updated', title: 'Mới Cập Nhật', containsMoreItems: true, type: HomeSectionType.singleRowNormal }),
         ];
@@ -182,7 +217,7 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
             let url: string;
             switch (section.id) {
                 case 'new_updated':
-                    url = `${API_DOMAIN}/api/comics?page=1&limit=20`;
+                    url = `${API_DOMAIN}/api/comics?page=1&limit=20&r18=${r18}`;
                     break;
                 default:
                     throw new Error('Invalid home section ID');
@@ -200,11 +235,12 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
 
     async getViewMoreItems(homepageSectionId: string, metadata: any): Promise<PagedResults> {
         const page: number = metadata?.page ?? 1;
+        const r18 = await this.getR18();
         let url = '';
 
         switch (homepageSectionId) {
             case 'new_updated':
-                url = `${API_DOMAIN}/api/comics?page=${page}&limit=20`;
+                url = `${API_DOMAIN}/api/comics?page=${page}&limit=20&r18=${r18}`;
                 break;
             default:
                 throw new Error('Requested to getViewMoreItems for a section ID which doesn\'t exist');
