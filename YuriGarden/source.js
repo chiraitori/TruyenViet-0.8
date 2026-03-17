@@ -516,10 +516,22 @@ class YuriGarden {
             method: 'GET',
         });
         const response = await this.requestManager.schedule(request, 1);
-        if (response.status === 403 || response.status === 503) {
+        let isCloudflareError = response.status === 403 || response.status === 503;
+        if (!isCloudflareError && response.data) {
+            try {
+                const dataObj = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+                if (dataObj.statusCode === 403 || dataObj.message === 'Forbidden') {
+                    isCloudflareError = true;
+                }
+            }
+            catch (e) {
+                // Ignore parse errors here, it might just be HTML from cloudflare
+            }
+        }
+        if (isCloudflareError) {
             throw new Error(`CLOUDFLARE BYPASS ERROR:\nPlease go to home page ${exports.YuriGardenInfo.name} source and press the cloud icon.`);
         }
-        return response.data;
+        return typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
     }
     async getCloudflareBypassRequestAsync() {
         return App.createRequest({
@@ -715,7 +727,12 @@ class Parser {
     }
     parseChapterDetails(json) {
         const pages = [];
-        for (const page of json) {
+        // In case the API returns { pages: [...] } or { statusCode: 403 }
+        let pagesArray = Array.isArray(json) ? json : (json.pages ?? []);
+        if (!Array.isArray(pagesArray)) {
+            return pages;
+        }
+        for (const page of pagesArray) {
             if (typeof page === 'string') {
                 pages.push(page.startsWith('http') ? page : `${STORAGE_BASE}${page}`);
             }
