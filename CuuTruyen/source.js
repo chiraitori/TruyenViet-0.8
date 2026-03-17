@@ -2519,10 +2519,7 @@ class CuuTruyen {
                         ...(request.headers ?? {}),
                         ...{
                             'referer': `${await this.getBaseUrl()}/`,
-                            'user-agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-                            'accept': 'application/json, text/plain, */*',
-                            'accept-language': 'en-US,en;q=0.9,vi;q=0.8',
-                            'cuutruyen-client': 'OfficialWebApp-20250805',
+                            'user-agent': await this.requestManager.getDefaultUserAgent(),
                         }
                     };
                     return request;
@@ -2610,17 +2607,17 @@ class CuuTruyen {
         if (!username || !password) {
             throw new Error('Username and password are required. Please configure in settings.');
         }
-        const baseUrl = await this.getBaseUrl();
         const url = `${await this.getApiUrl()}/login`;
         const request = App.createRequest({
             url,
             method: 'POST',
             headers: {
-                'content-type': 'application/json',
-                'accept': 'application/json',
-                'accept-language': 'en-US,en;q=0.9,vi;q=0.8',
-                'origin': baseUrl,
-                'referer': `${baseUrl}/login`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Origin': await this.getBaseUrl(),
+                'Referer': `${await this.getBaseUrl()}/login`,
                 'cuutruyen-client': 'OfficialWebApp-20250805',
             },
             data: JSON.stringify({ username, password })
@@ -2664,14 +2661,12 @@ class CuuTruyen {
     async apiRequest(endpoint, params = '') {
         const token = await this.getValidAuthToken();
         const userId = await (0, CuuTruyenSetting_1.getUserId)(this.stateManager);
-        const baseUrl = await this.getBaseUrl();
         const url = `${await this.getApiUrl()}/${endpoint}${params ? `?${params}` : ''}`;
         const headers = {
-            'accept': 'application/json',
-            'accept-language': 'en-US,en;q=0.9,vi;q=0.8',
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
             'cuutruyen-client': 'OfficialWebApp-20250805',
-            'referer': `${baseUrl}/`,
-            'origin': baseUrl,
         };
         // Add auth headers if available
         if (token) {
@@ -3165,41 +3160,30 @@ const performLogin = async (stateManager, requestManager) => {
         throw new Error('Please enter username and password first');
     }
     const domain = await (0, exports.getDomain)(stateManager);
-    const baseUrl = `https://${domain}`;
-    const url = `${baseUrl}/api/v2/login`;
+    const url = `https://${domain}/api/v2/login`;
     const request = App.createRequest({
         url,
         method: 'POST',
         headers: {
-            'content-type': 'application/json',
-            'accept': 'application/json',
-            'accept-language': 'en-US,en;q=0.9,vi;q=0.8',
-            'origin': baseUrl,
-            'referer': `${baseUrl}/login`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Origin': `https://${domain}`,
+            'Referer': `https://${domain}/login`,
             'cuutruyen-client': 'OfficialWebApp-20250805',
         },
         data: JSON.stringify({ username, password })
     });
     const response = await requestManager.schedule(request, 1);
     if (!response.data) {
-        throw new Error('Login failed: No response from server');
+        throw new Error('Login failed: No response');
     }
     const responseText = response.data;
-    // Debug: Check what we actually received
     if (responseText.trim().startsWith('<')) {
-        // Cloudflare or server error page
-        if (responseText.includes('Cloudflare')) {
-            throw new Error('Login failed: Cloudflare protection detected. Try again later.');
-        }
-        throw new Error('Login failed: Server returned HTML instead of JSON');
+        throw new Error('Login failed: Server returned an error page');
     }
-    let result;
-    try {
-        result = JSON.parse(responseText);
-    }
-    catch (e) {
-        throw new Error(`Login failed: Invalid response format - ${responseText.substring(0, 100)}`);
-    }
+    const result = JSON.parse(responseText);
     if (result.auth_token) {
         await (0, exports.setAuthToken)(stateManager, result.auth_token);
         await (0, exports.setUserId)(stateManager, String(result.data?.id ?? ''));
@@ -3218,8 +3202,6 @@ const domainSettings = (stateManager) => {
                 App.createDUISection({
                     isHidden: false,
                     id: 'content',
-                    header: 'Select Domain',
-                    footer: '✅ cuutruyen.net - Hoạt động\n⚠️ nettrom.com, hetcuutruyen.net - Bị Cloudflare block\n❌ cuutruyenpip7z.site, cuutruyen5c844.site - Không truy cập được',
                     rows: async () => {
                         await Promise.all([
                             (0, exports.getDomain)(stateManager)
@@ -3238,15 +3220,15 @@ const domainSettings = (stateManager) => {
                                 labelResolver: async (option) => {
                                     switch (option) {
                                         case Domains.CUUTRUYEN:
-                                            return '✅ Cuu Truyen (.net)';
+                                            return 'Cuu Truyen (.net)';
                                         case Domains.NETTROM:
-                                            return '⚠️ Net Trom (.com) - CF Block';
+                                            return 'Net Trom (.com)';
                                         case Domains.HETCUUTRUYEN:
-                                            return '⚠️ Het Cuu Truyen (.net) - CF Block';
+                                            return 'Het Cuu Truyen (.net)';
                                         case Domains.CUUTRUYENPIP7Z:
-                                            return '❌ Cuu Truyen Pip7z (.site) - Dead';
+                                            return 'Cuu Truyen Pip7z (.site)';
                                         case Domains.CUUTRUYEN5C844:
-                                            return '❌ Cuu Truyen 5c844 (.site) - Dead';
+                                            return 'Cuu Truyen 5c844 (.site)';
                                         default:
                                             return option;
                                     }
