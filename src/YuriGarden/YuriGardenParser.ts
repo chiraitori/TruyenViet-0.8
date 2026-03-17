@@ -100,18 +100,38 @@ export class Parser {
     parseChapterDetails(json: any): string[] {
         const pages: string[] = [];
 
-        // In case the API returns { pages: [...] } or { statusCode: 403 }
+        // Handle API response formats:
+        // 1. { pages: [{ id, url, key? }, ...], isLocked?, passwordHint? }
+        // 2. { pages: ["url1", "url2", ...] }
+        // 3. ["url1", "url2", ...]
+        // 4. { statusCode: 403, message: "Forbidden" }  (Cloudflare block)
+
+        if (json.statusCode === 403 || json.message === 'Forbidden') {
+            return pages; // Empty - Cloudflare blocked
+        }
+
         let pagesArray = Array.isArray(json) ? json : (json.pages ?? []);
 
         if (!Array.isArray(pagesArray)) {
             return pages;
         }
 
+        // If chapter is locked and no pages returned
+        if (json.isLocked && pagesArray.length === 0) {
+            return pages;
+        }
+
         for (const page of pagesArray) {
+            let url = '';
             if (typeof page === 'string') {
-                pages.push(page.startsWith('http') ? page : `${STORAGE_BASE}${page}`);
-            } else if (page.url) {
-                pages.push(page.url.startsWith('http') ? page.url : `${STORAGE_BASE}${page.url}`);
+                url = page;
+            } else if (page && typeof page === 'object') {
+                // API returns { id, url, key? } where key is scramble order (ignored by Paperback)
+                url = page.url ?? '';
+            }
+
+            if (url) {
+                pages.push(url.startsWith('http') ? url : `${STORAGE_BASE}${url}`);
             }
         }
 
