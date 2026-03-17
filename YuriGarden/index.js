@@ -480,7 +480,7 @@ exports.YuriGardenInfo = {
             type: types_1.BadgeColor.GREEN
         }
     ],
-    intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS
+    intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
 };
 class YuriGarden {
     constructor() {
@@ -516,7 +516,21 @@ class YuriGarden {
             method: 'GET',
         });
         const response = await this.requestManager.schedule(request, 1);
+        if (response.status === 403 || response.status === 503) {
+            throw new Error(`CLOUDFLARE BYPASS ERROR:\nPlease go to home page ${exports.YuriGardenInfo.name} source and press the cloud icon.`);
+        }
         return response.data;
+    }
+    async getCloudflareBypassRequestAsync() {
+        return App.createRequest({
+            url: DOMAIN,
+            method: 'GET',
+            headers: {
+                'referer': `${DOMAIN}/`,
+                'origin': `${DOMAIN}/`,
+                'user-agent': await this.requestManager.getDefaultUserAgent()
+            }
+        });
     }
     async getMangaDetails(mangaId) {
         const json = JSON.parse(await this.getAPI(`${API_DOMAIN}/api/comics/${mangaId}`));
