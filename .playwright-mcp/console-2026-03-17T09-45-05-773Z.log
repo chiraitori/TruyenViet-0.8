@@ -1596,3 +1596,176 @@
 [  851949ms] [WARNING] !【type = 6】 @ https://yurigarden.com/assets/index-LUNgUZnA.js:16
 [  852455ms] [WARNING] !【type = 6】 @ https://yurigarden.com/assets/index-LUNgUZnA.js:16
 [  852954ms] [WARNING] !【type = 6】 @ https://yurigarden.com/assets/index-LUNgUZnA.js:16
+[ 2300371ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://api.yurigarden.com/api/chapters/pages/4846:0
+[ 2438965ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+[ 2440255ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://api.yurigarden.com/api/chapters/pages/4846:0
+[ 2486257ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+[ 2487598ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://api.yurigarden.com/api/chapters/pages/4846:0
+[ 3374793ms] [ERROR] Failed to load resource: the server responded with a status of 403 () @ https://api.yurigarden.com/api/chapters/pages/3546:0
+[ 3375068ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+[ 3375177ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145776)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Sx (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:172685)
+    at C (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:158704)
+[ 3375568ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+[ 3375609ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145776)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+[ 3375761ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+[ 3375779ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145776)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145776)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+[ 3375892ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145776)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+[ 3375902ms] [ERROR] %c%d font-size:0;color:transparent NaN @ https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:0
+[ 3375902ms] [ERROR] %c%d font-size:0;color:transparent NaN @ https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:0
+[ 3375906ms] [WARNING] %c%d font-size:0;color:transparent NaN @ https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:0
+[ 3375906ms] [WARNING] %c%d font-size:0;color:transparent NaN @ https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:0
+[ 3375992ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+[ 3376050ms] [ERROR] Failed to load resource: the server responded with a status of 401 () @ https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/pat/9ddb6279e94304bf/1773744081356/638b0184db0b80ac59f6a4b068e2f983f218017913329e7fc8272f15464fcef7/KjAE82H9SDKDu5L:0
+[ 3376067ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+[ 3376081ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+[ 3376081ms] [ERROR]  Note that 'script-src' was not explicitly set, so 'default-src' is used as a fallback. @ https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:0
+[ 3376313ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145776)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+[ 3376349ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+[ 3376380ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+[ 3377047ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+[ 3377096ms] TypeError: Cannot redefine property: href
+    at Object.defineProperty (<anonymous>)
+    at <anonymous>:18:12
+    at <anonymous>:43:5
+    at <anonymous>:44:7
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)
+    at Tw.TG (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:145799)
+    at Tw.TS (https://challenges.cloudflare.com/cdn-cgi/challenge-platform/h/g/turnstile/f/ov2/av0/rch/zycvv/0x4AAAAAACrUOI5kTSfB5cnB/auto/fbE/new/normal?lang=auto:1:168693)

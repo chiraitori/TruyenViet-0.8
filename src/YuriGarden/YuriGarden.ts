@@ -165,8 +165,9 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
     }
 
     async getSearchResults(query: SearchRequest, metadata: any): Promise<PagedResults> {
-        const page = metadata?.page ?? 1;
-        const r18 = await this.getR18();
+        let page = metadata?.page ?? 1;
+        let isFetchingR18 = metadata?.isFetchingR18 ?? false;
+        const r18Enabled = await this.getR18();
 
         const tags = query.includedTags?.map(tag => tag.id) ?? [];
         let statusFilter = '';
@@ -180,7 +181,10 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
             }
         }
 
-        let url = `${API_DOMAIN}/api/comics?page=${page}&limit=20&r18=${r18}`;
+        let url = `${API_DOMAIN}/api/comics?page=${page}&limit=20`;
+        if (isFetchingR18) {
+            url += `&r18=true`;
+        }
 
         if (query.title) {
             url += `&search=${encodeURIComponent(query.title)}`;
@@ -197,7 +201,15 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
         const json = JSON.parse(await this.getAPI(url));
         const tiles = this.parser.parseSearchResults(json);
         const totalPages = json.totalPages ?? 1;
-        metadata = (page < totalPages) ? { page: page + 1 } : undefined;
+
+        if (page < totalPages) {
+            metadata = { page: page + 1, isFetchingR18: isFetchingR18 };
+        } else if (!isFetchingR18 && r18Enabled) {
+            // Switch to fetching R18
+            metadata = { page: 1, isFetchingR18: true };
+        } else {
+            metadata = undefined;
+        }
 
         return App.createPagedResults({
             results: tiles,
@@ -207,17 +219,26 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
 
     async getHomePageSections(sectionCallback: (section: HomeSection) => void): Promise<void> {
         console.log('YuriGarden Running...');
-        const r18 = await this.getR18();
+        const r18Enabled = await this.getR18();
         const sections: HomeSection[] = [
             App.createHomeSection({ id: 'new_updated', title: 'Mới Cập Nhật', containsMoreItems: true, type: HomeSectionType.singleRowNormal }),
         ];
+
+        if (r18Enabled) {
+            sections.push(
+                App.createHomeSection({ id: 'new_updated_18', title: 'Mới Cập Nhật (18+)', containsMoreItems: true, type: HomeSectionType.singleRowNormal })
+            );
+        }
 
         for (const section of sections) {
             sectionCallback(section);
             let url: string;
             switch (section.id) {
                 case 'new_updated':
-                    url = `${API_DOMAIN}/api/comics?page=1&limit=20&r18=${r18}`;
+                    url = `${API_DOMAIN}/api/comics?page=1&limit=20`;
+                    break;
+                case 'new_updated_18':
+                    url = `${API_DOMAIN}/api/comics?page=1&limit=20&r18=true`;
                     break;
                 default:
                     throw new Error('Invalid home section ID');
@@ -226,6 +247,7 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
             const json = JSON.parse(await this.getAPI(url));
             switch (section.id) {
                 case 'new_updated':
+                case 'new_updated_18':
                     section.items = this.parser.parseSearchResults(json);
                     break;
             }
@@ -235,12 +257,14 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
 
     async getViewMoreItems(homepageSectionId: string, metadata: any): Promise<PagedResults> {
         const page: number = metadata?.page ?? 1;
-        const r18 = await this.getR18();
         let url = '';
 
         switch (homepageSectionId) {
             case 'new_updated':
-                url = `${API_DOMAIN}/api/comics?page=${page}&limit=20&r18=${r18}`;
+                url = `${API_DOMAIN}/api/comics?page=${page}&limit=20`;
+                break;
+            case 'new_updated_18':
+                url = `${API_DOMAIN}/api/comics?page=${page}&limit=20&r18=true`;
                 break;
             default:
                 throw new Error('Requested to getViewMoreItems for a section ID which doesn\'t exist');
