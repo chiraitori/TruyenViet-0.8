@@ -6,6 +6,8 @@ import {
     PartialSourceManga
 } from '@paperback/types';
 
+import { decryptPagesResponse } from './YuriGardenDecryptor';
+
 const STORAGE_BASE = 'https://db.yurigarden.com/storage/v1/object/public/yuri-garden-store/';
 
 export class Parser {
@@ -101,23 +103,33 @@ export class Parser {
         const pages: string[] = [];
 
         // Handle API response formats:
-        // 1. { pages: [{ id, url, key? }, ...], isLocked?, passwordHint? }
-        // 2. { pages: ["url1", "url2", ...] }
-        // 3. ["url1", "url2", ...]
-        // 4. { statusCode: 403, message: "Forbidden" }  (Cloudflare block)
+        // 1. { encrypted: true, data: "<base64>" }  (AES-CBC encrypted)
+        // 2. { pages: [{ id, url, key? }, ...], isLocked?, passwordHint? }
+        // 3. { pages: ["url1", "url2", ...] }
+        // 4. ["url1", "url2", ...]
+        // 5. { statusCode: 403, message: "Forbidden" }  (Cloudflare block)
 
         if (json.statusCode === 403 || json.message === 'Forbidden') {
             return pages; // Empty - Cloudflare blocked
         }
 
-        let pagesArray = Array.isArray(json) ? json : (json.pages ?? []);
+        // Decrypt if encrypted
+        let decrypted: any;
+        try {
+            decrypted = decryptPagesResponse(json);
+        } catch (e) {
+            // Decryption failed - try using raw data
+            decrypted = json;
+        }
+
+        let pagesArray = Array.isArray(decrypted) ? decrypted : (decrypted.pages ?? []);
 
         if (!Array.isArray(pagesArray)) {
             return pages;
         }
 
         // If chapter is locked and no pages returned
-        if (json.isLocked && pagesArray.length === 0) {
+        if (decrypted.isLocked && pagesArray.length === 0) {
             return pages;
         }
 
@@ -127,11 +139,10 @@ export class Parser {
             if (typeof page === 'string') {
                 url = page;
             } else if (page && typeof page === 'object') {
-                // API returns { id, url, key? } where key is the scramble order array
-                // Images are split into 10 horizontal strips with 4px gaps and shuffled
-                // NOTE: key cannot be used here — Paperback loads page URLs directly
-                // through its own image viewer, bypassing the requestManager interceptor.
-                // Appending ?scramble=... to the CDN URL causes the CDN to reject it (blank pages).
+                // After decryption, pages have: { id, url, decoded? }
+                // where decoded is the permutation array for image strip reordering
+                // NOTE: Paperback cannot descramble images (no Canvas API),
+                // so we just use the URL as-is. Images may appear shuffled.
                 url = page.url ?? '';
             }
 
