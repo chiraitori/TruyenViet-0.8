@@ -21,10 +21,11 @@
   "license": "GPL-3.0-or-later",
   "devDependencies": {
     "@types/cheerio": "^0.22.21",
+    "@types/crypto-js": "^4.2.2",
     "@types/mocha": "^10.0.10",
     "@typescript-eslint/eslint-plugin": "^4.25.0",
     "@typescript-eslint/parser": "^4.25.0",
-    "crypto-js": "^4.1.1",
+    "crypto-js": "^4.2.0",
     "eslint": "^7.27.0",
     "eslint-plugin-modules-newline": "^0.0.6",
     "gh-pages": "^5.0.0",
@@ -39,6 +40,9 @@
     "@paperback/types": "^0.8.0-alpha.47",
     "cheerio": "^1.0.0-rc.12",
     "entities": "^4.4.0",
-    "nodemon": "^2.0.22"
+    "nodemon": "^2.0.22",
+    "puppeteer": "^24.40.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
   }
 }
