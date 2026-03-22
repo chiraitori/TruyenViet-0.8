@@ -494,13 +494,6 @@ class YuriGarden {
             requestTimeout: 50000,
             interceptor: {
                 interceptRequest: async (request) => {
-                    // Strip scramble metadata from image URLs before fetching
-                    // (encoded by parser for future descrambling support)
-                    if (request.url.includes('scramble=')) {
-                        const url = new URL(request.url);
-                        url.searchParams.delete('scramble');
-                        request.url = url.toString();
-                    }
                     request.headers = {
                         ...(request.headers ?? {}),
                         ...{
@@ -807,26 +800,19 @@ class Parser {
         }
         for (const page of pagesArray) {
             let url = '';
-            let scrambleKey;
             if (typeof page === 'string') {
                 url = page;
             }
             else if (page && typeof page === 'object') {
                 // API returns { id, url, key? } where key is the scramble order array
                 // Images are split into 10 horizontal strips with 4px gaps and shuffled
+                // NOTE: key cannot be used here — Paperback loads page URLs directly
+                // through its own image viewer, bypassing the requestManager interceptor.
+                // Appending ?scramble=... to the CDN URL causes the CDN to reject it (blank pages).
                 url = page.url ?? '';
-                if (Array.isArray(page.key) && page.key.length > 0) {
-                    scrambleKey = page.key;
-                }
             }
             if (url) {
-                let fullUrl = url.startsWith('http') ? url : `${STORAGE_BASE}${url}`;
-                // Encode scramble key in URL for the request interceptor to handle
-                if (scrambleKey) {
-                    const separator = fullUrl.includes('?') ? '&' : '?';
-                    fullUrl += `${separator}scramble=${scrambleKey.join(',')}`;
-                }
-                pages.push(fullUrl);
+                pages.push(url.startsWith('http') ? url : `${STORAGE_BASE}${url}`);
             }
         }
         return pages;
