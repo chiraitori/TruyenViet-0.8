@@ -527,18 +527,24 @@ class YuriGarden {
         const response = await this.requestManager.schedule(request, 1);
         let isCloudflareError = response.status === 403 || response.status === 503;
         if (!isCloudflareError && response.data) {
-            try {
-                const dataObj = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-                if (dataObj.statusCode === 403 || dataObj.message === 'Forbidden') {
-                    isCloudflareError = true;
+            // response.data may be a string (raw JSON) or already parsed object
+            let dataObj = null;
+            if (typeof response.data === 'string') {
+                try {
+                    dataObj = JSON.parse(response.data);
+                }
+                catch (e) {
+                    // Not valid JSON — might be HTML from Cloudflare challenge page
+                    if (response.data.includes('cf-turnstile') || response.data.includes('challenge-platform')) {
+                        isCloudflareError = true;
+                    }
                 }
             }
-            catch (e) {
-                // might be HTML from Cloudflare challenge page
-                const dataStr = String(response.data);
-                if (dataStr.includes('cf-turnstile') || dataStr.includes('challenge-platform')) {
-                    isCloudflareError = true;
-                }
+            else {
+                dataObj = response.data;
+            }
+            if (dataObj && (dataObj.statusCode === 403 || dataObj.message === 'Forbidden')) {
+                isCloudflareError = true;
             }
         }
         if (isCloudflareError) {
