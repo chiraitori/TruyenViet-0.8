@@ -7876,8 +7876,12 @@ class YuriGarden {
         return typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
     }
     async getCloudflareBypassRequestAsync() {
+        // Must load a chapter reader page — this triggers the Cloudflare Turnstile
+        // challenge that protects the api.yurigarden.com/api/chapters/pages/ endpoint.
+        // The homepage does NOT trigger this challenge.
+        // The cf_clearance cookie is set on .yurigarden.com (all subdomains).
         return App.createRequest({
-            url: `${DOMAIN}/comic/1`,
+            url: `${DOMAIN}/comic/1170/9338`,
             method: 'GET',
             headers: {
                 'referer': `${DOMAIN}/`,
