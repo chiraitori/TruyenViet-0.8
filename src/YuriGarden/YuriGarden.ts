@@ -121,8 +121,12 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
     }
 
     async getCloudflareBypassRequestAsync(): Promise<Request> {
+        // Must load a chapter reader page — this triggers the Cloudflare Turnstile
+        // challenge that protects the api.yurigarden.com/api/chapters/pages/ endpoint.
+        // The homepage does NOT trigger this challenge.
+        // The cf_clearance cookie is set on .yurigarden.com (all subdomains).
         return App.createRequest({
-            url: `${DOMAIN}/comic/1`,
+            url: `${DOMAIN}/comic/1170/9338`,
             method: 'GET',
             headers: {
                 'referer': `${DOMAIN}/`,
