@@ -55,6 +55,14 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
         requestTimeout: 50000,
         interceptor: {
             interceptRequest: async (request: Request): Promise<Request> => {
+                // Strip scramble metadata from image URLs before fetching
+                // (encoded by parser for future descrambling support)
+                if (request.url.includes('scramble=')) {
+                    const url = new URL(request.url);
+                    url.searchParams.delete('scramble');
+                    request.url = url.toString();
+                }
+
                 request.headers = {
                     ...(request.headers ?? {}),
                     ...{
@@ -116,7 +124,7 @@ export class YuriGarden implements SearchResultsProviding, MangaProviding, Chapt
 
     async getCloudflareBypassRequestAsync(): Promise<Request> {
         return App.createRequest({
-            url: `${DOMAIN}/comic/466/4846`,
+            url: `${DOMAIN}/comic/1`,
             method: 'GET',
             headers: {
                 'referer': `${DOMAIN}/`,

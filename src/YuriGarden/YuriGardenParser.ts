@@ -123,15 +123,27 @@ export class Parser {
 
         for (const page of pagesArray) {
             let url = '';
+            let scrambleKey: number[] | undefined;
+
             if (typeof page === 'string') {
                 url = page;
             } else if (page && typeof page === 'object') {
-                // API returns { id, url, key? } where key is scramble order (ignored by Paperback)
+                // API returns { id, url, key? } where key is the scramble order array
+                // Images are split into 10 horizontal strips with 4px gaps and shuffled
                 url = page.url ?? '';
+                if (Array.isArray(page.key) && page.key.length > 0) {
+                    scrambleKey = page.key;
+                }
             }
 
             if (url) {
-                pages.push(url.startsWith('http') ? url : `${STORAGE_BASE}${url}`);
+                let fullUrl = url.startsWith('http') ? url : `${STORAGE_BASE}${url}`;
+                // Encode scramble key in URL for the request interceptor to handle
+                if (scrambleKey) {
+                    const separator = fullUrl.includes('?') ? '&' : '?';
+                    fullUrl += `${separator}scramble=${scrambleKey.join(',')}`;
+                }
+                pages.push(fullUrl);
             }
         }
 
