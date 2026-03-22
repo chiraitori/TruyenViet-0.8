@@ -7785,651 +7785,623 @@ __exportStar(require("./compat/DyamicUI"), exports);
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.YuriGarden = exports.YuriGardenInfo = void 0;
 const types_1 = require("@paperback/types");
-const YuriGardenParser_1 = require("./YuriGardenParser");
-const DOMAIN = 'https://yurigarden.com';
-const API_DOMAIN = 'https://api.yurigarden.com';
+const CryptoJS = require('crypto-js');
+const DOMAIN = 'https://yurigarden.com/';
+const API_DOMAIN = 'https://api.yurigarden.com/';
+const STORE_DOMAIN = 'https://db.yurigarden.com/storage/v1/object/public/yuri-garden-store/';
+const normalizeImageUrl = (path) => {
+    if (!path)
+        return 'https://i.imgur.com/GYUxEX8.png';
+    if (path.startsWith('http://') || path.startsWith('https://'))
+        return path;
+    return `${STORE_DOMAIN}${path.replace(/^\/+/, '')}`;
+};
+const mapStatus = (status) => {
+    switch ((status ?? '').toLowerCase()) {
+        case 'ongoing':
+            return 'ONGOING';
+        case 'completed':
+            return 'COMPLETED';
+        case 'oncoming':
+        case 'hiatus':
+            return 'ON_HIATUS';
+        default:
+            return 'UNKNOWN';
+    }
+};
+const pickFirstNumeric = (value) => {
+    const match = value.match(/\d+/);
+    return match?.[0];
+};
+const extractMangaId = (input) => {
+    if (typeof input === 'number' && Number.isFinite(input))
+        return String(input);
+    const raw = String(input ?? '').trim();
+    if (!raw)
+        throw new Error('Missing manga ID');
+    if (/^\d+$/.test(raw))
+        return raw;
+    const comicRoute = raw.match(/\/comic\/(\d+)/i)?.[1];
+    if (comicRoute)
+        return comicRoute;
+    const numeric = pickFirstNumeric(raw);
+    if (numeric)
+        return numeric;
+    throw new Error(`Unable to extract manga ID from value: ${raw}`);
+};
+const extractChapterId = (input) => {
+    if (typeof input === 'number' && Number.isFinite(input))
+        return String(input);
+    const raw = String(input ?? '').trim();
+    if (!raw)
+        throw new Error('Missing chapter ID');
+    if (/^\d+$/.test(raw))
+        return raw;
+    const chapterRoute = raw.match(/\/comic\/\d+\/(\d+)/i)?.[1];
+    if (chapterRoute)
+        return chapterRoute;
+    const numeric = pickFirstNumeric(raw);
+    if (numeric)
+        return numeric;
+    throw new Error(`Unable to extract chapter ID from value: ${raw}`);
+};
+// ── Decryption ───────────────────────────────────────────────────────
+const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+const FACTORIAL_TABLE = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800];
+const buildDecryptPassphrase = () => {
+    const a = new Uint8Array([84, 122, 83, 44]);
+    const b = new Uint8Array([53, 45, 64, 230]);
+    const c = new Uint8Array([220, 207, 245, 148]);
+    const d = new Uint8Array([184, 136, 188, 119]);
+    const x = new Uint8Array([18, 35, 52, 69]);
+    const y = new Uint8Array([86, 103, 120, 137]);
+    const z = new Uint8Array([154, 171, 188, 205]);
+    const w = new Uint8Array([222, 239, 240, 1]);
+    const bytes = [];
+    for (let i = 0; i < 4; i++)
+        bytes.push((a[i] ?? 0) ^ (x[i] ?? 0));
+    for (let i = 0; i < 4; i++)
+        bytes.push((b[i] ?? 0) ^ (y[i] ?? 0));
+    for (let i = 0; i < 4; i++)
+        bytes.push((c[i] ?? 0) ^ (z[i] ?? 0));
+    for (let i = 0; i < 4; i++)
+        bytes.push((d[i] ?? 0) ^ (w[i] ?? 0));
+    return String.fromCharCode(...bytes);
+};
+const toWordArray = (bytes, length) => {
+    const sigBytes = length ?? bytes.length;
+    const words = [];
+    for (let i = 0; i < sigBytes; i += 4) {
+        words.push(((((bytes[i] ?? 0) << 24) |
+            ((bytes[i + 1] ?? 0) << 16) |
+            ((bytes[i + 2] ?? 0) << 8) |
+            (bytes[i + 3] ?? 0)) >>> 0));
+    }
+    return CryptoJS.lib.WordArray.create(words, sigBytes);
+};
+const wordArrayToBytes = (wordArray) => {
+    const out = [];
+    const sigBytes = wordArray.sigBytes;
+    for (let i = 0; i < sigBytes; i++) {
+        const word = wordArray.words[i >>> 2] ?? 0;
+        out.push((word >>> (24 - (i % 4) * 8)) & 255);
+    }
+    return out;
+};
+const md5Bytes = (bytes) => {
+    const digest = CryptoJS.MD5(toWordArray(bytes)).toString(CryptoJS.enc.Hex);
+    const out = [];
+    for (let i = 0; i < digest.length; i += 2) {
+        out.push(parseInt(digest.slice(i, i + 2), 16));
+    }
+    return out;
+};
+const deriveKeyAndIv = (password, salt) => {
+    const passwordBytes = Array.from(password).map((ch) => ch.charCodeAt(0));
+    const first = md5Bytes([...passwordBytes, ...salt]);
+    const second = md5Bytes([...first, ...passwordBytes, ...salt]);
+    const third = md5Bytes([...second, ...passwordBytes, ...salt]);
+    return {
+        key: [...first, ...second],
+        iv: third,
+    };
+};
+const decryptChapterPayloadData = (base64Ciphertext, passphrase) => {
+    const parsed = CryptoJS.enc.Base64.parse(base64Ciphertext);
+    const allBytes = wordArrayToBytes(parsed);
+    if (allBytes.length < 16)
+        throw new Error('Encrypted payload is too short');
+    const salt = allBytes.slice(8, 16);
+    const encryptedBytes = allBytes.slice(16);
+    const { key, iv } = deriveKeyAndIv(passphrase, salt);
+    const decrypted = CryptoJS.AES.decrypt({ ciphertext: toWordArray(encryptedBytes, encryptedBytes.length) }, toWordArray(key, 32), {
+        iv: toWordArray(iv, 16),
+        mode: CryptoJS.mode.CBC,
+        padding: CryptoJS.pad.Pkcs7,
+    });
+    return decrypted.toString(CryptoJS.enc.Utf8);
+};
+const tryDecodePageKey = (encoded) => {
+    try {
+        if (!/^H[1-9A-HJ-NP-Za-km-z]+$/.test(encoded))
+            return undefined;
+        const body = encoded.slice(1, -1);
+        const checksum = encoded.slice(-1);
+        let value = 0;
+        for (const ch of body) {
+            const idx = BASE58_ALPHABET.indexOf(ch);
+            if (idx < 0)
+                return undefined;
+            value = value * 58 + idx;
+        }
+        if (BASE58_ALPHABET[value % 58] !== checksum)
+            return undefined;
+        const pool = Array.from({ length: 10 }, (_, i) => i);
+        const out = [];
+        for (let i = 9; i >= 0; i--) {
+            const f = FACTORIAL_TABLE[i] ?? 1;
+            const pick = Math.floor(value / f);
+            value = value % f;
+            const item = pool.splice(pick, 1)[0];
+            if (item === undefined)
+                return undefined;
+            out.push(item);
+        }
+        return out;
+    }
+    catch {
+        return undefined;
+    }
+};
+// ── Payload Processing ───────────────────────────────────────────────
+const normalizeChapterPagesPayload = (payload) => {
+    let parsed = payload;
+    if (payload?.encrypted === true && typeof payload?.data === 'string') {
+        try {
+            const decryptedText = decryptChapterPayloadData(payload.data, buildDecryptPassphrase());
+            parsed = JSON.parse(decryptedText ?? '{}');
+        }
+        catch {
+            parsed = payload;
+        }
+    }
+    if (!parsed || typeof parsed !== 'object')
+        return parsed;
+    const pages = Array.isArray(parsed.pages)
+        ? parsed.pages
+        : (parsed.pages && typeof parsed.pages === 'object')
+            ? Object.values(parsed.pages)
+            : [];
+    if (!pages.length)
+        return parsed;
+    const normalizedPages = pages.map((page) => {
+        const decoded = typeof page?.key === 'string' ? tryDecodePageKey(page.key.replace(/^.{4}/, '')) : undefined;
+        const cleanUrl = typeof page?.url === 'string' ? page.url.replace('_credit', '') : page?.url;
+        return {
+            ...page,
+            url: cleanUrl,
+            decoded,
+        };
+    });
+    return {
+        ...parsed,
+        pages: normalizedPages,
+    };
+};
+const toEntries = (value) => {
+    if (Array.isArray(value))
+        return value;
+    if (value && typeof value === 'object')
+        return Object.values(value);
+    return [];
+};
+const payloadHasScrambleHints = (payload) => {
+    const pageEntries = toEntries(payload?.pages);
+    for (const entry of pageEntries) {
+        if (!entry || typeof entry !== 'object')
+            continue;
+        if (typeof entry.key === 'string' && entry.key.length > 0)
+            return true;
+        if (Array.isArray(entry.decoded) && entry.decoded.length > 0)
+            return true;
+    }
+    return false;
+};
+const extractPagesFromPayload = (payload, preferUnscrambled) => {
+    const extractImageValue = (entry) => {
+        if (!entry)
+            return undefined;
+        if (typeof entry === 'string')
+            return entry;
+        if (typeof entry !== 'object')
+            return undefined;
+        // Try unscrambled/original URL fields first
+        const rawCandidate = entry.originalUrl ??
+            entry.originUrl ??
+            entry.rawUrl ??
+            entry.fullUrl ??
+            entry.imageUrl ??
+            entry.fileUrl ??
+            entry.origin ??
+            entry.original ??
+            entry.raw ??
+            entry?.page?.originalUrl ??
+            entry?.page?.originUrl ??
+            entry?.page?.rawUrl ??
+            entry?.page?.original ??
+            entry?.page?.origin;
+        if (typeof rawCandidate === 'string' && rawCandidate.trim().length > 0) {
+            return rawCandidate;
+        }
+        if (preferUnscrambled) {
+            const imageCandidates = [
+                entry?.images?.original,
+                entry?.images?.raw,
+                entry?.images?.full,
+                entry?.image?.original,
+                entry?.image?.raw,
+                Array.isArray(entry?.images) ? entry.images[0] : undefined,
+            ];
+            for (const candidate of imageCandidates) {
+                if (typeof candidate === 'string' && candidate.trim().length > 0) {
+                    return candidate;
+                }
+            }
+        }
+        // Fall back to standard URL field
+        const candidate = entry.url ??
+            entry.image ??
+            entry.src ??
+            entry.path ??
+            entry.file ??
+            entry.link ??
+            entry?.page?.url ??
+            entry?.page?.image;
+        return typeof candidate === 'string' ? candidate : undefined;
+    };
+    const candidateBuckets = [
+        payload,
+        payload?.pages,
+        payload?.data,
+        payload?.data?.pages,
+        payload?.result,
+        payload?.result?.pages,
+        payload?.items,
+        payload?.list,
+    ];
+    return candidateBuckets
+        .flatMap((bucket) => toEntries(bucket))
+        .map((entry) => extractImageValue(entry))
+        .filter((value) => !!value)
+        .map((value) => normalizeImageUrl(value))
+        .filter((value) => !!value);
+};
+// ── Query Helpers ────────────────────────────────────────────────────
+const buildComicsQuery = (params) => {
+    const query = [
+        `page=${params.page}`,
+        `limit=${params.limit}`,
+        `full=${params.full === false ? 'false' : 'true'}`,
+        `r18=${params.r18}`,
+        `allowR18=${params.r18}`,
+    ];
+    if (params.search) {
+        query.push(`search=${encodeURIComponent(params.search)}`);
+    }
+    return query.join('&');
+};
+// ── Source Info ───────────────────────────────────────────────────────
 exports.YuriGardenInfo = {
     version: '1.0.1',
     name: 'YuriGarden',
     icon: 'icon.png',
-    author: 'TruyenViet',
-    authorWebsite: 'https://github.com/chiraitori',
+    author: 'AlanNois',
+    authorWebsite: 'https://github.com/AlanNois',
     description: 'Extension that pulls manga from YuriGarden.',
-    contentRating: types_1.ContentRating.ADULT,
     websiteBaseURL: DOMAIN,
+    contentRating: types_1.ContentRating.MATURE,
     sourceTags: [
         {
-            text: 'Yuri',
-            type: types_1.BadgeColor.GREEN
+            text: 'Recommended',
+            type: types_1.BadgeColor.BLUE,
         },
-        {
-            text: 'Cloudflare',
-            type: types_1.BadgeColor.RED
-        }
     ],
-    intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED
+    intents: types_1.SourceIntents.MANGA_CHAPTERS | types_1.SourceIntents.HOMEPAGE_SECTIONS | types_1.SourceIntents.CLOUDFLARE_BYPASS_REQUIRED | types_1.SourceIntents.SETTINGS_UI,
 };
+// ── Main Source Class ────────────────────────────────────────────────
 class YuriGarden {
     constructor() {
         this.stateManager = App.createSourceStateManager();
         this.requestManager = App.createRequestManager({
             requestsPerSecond: 4,
-            requestTimeout: 50000,
+            requestTimeout: 35000,
             interceptor: {
                 interceptRequest: async (request) => {
                     request.headers = {
                         ...(request.headers ?? {}),
                         ...{
-                            'referer': `${DOMAIN}/`,
-                            'origin': DOMAIN,
-                            'x-app-origin': DOMAIN,
+                            referer: DOMAIN,
+                            origin: DOMAIN.replace(/\/$/, ''),
+                            'x-app-origin': DOMAIN.replace(/\/$/, ''),
                             'x-custom-lang': 'vi',
+                            accept: 'application/json, text/plain, */*',
                             'user-agent': await this.requestManager.getDefaultUserAgent(),
-                        }
+                        },
                     };
                     return request;
                 },
                 interceptResponse: async (response) => {
                     return response;
-                }
-            }
+                },
+            },
         });
-        this.parser = new YuriGardenParser_1.Parser();
     }
-    getMangaShareUrl(mangaId) {
-        return `${DOMAIN}/comic/${mangaId}`;
+    async isR18Enabled() {
+        const value = await this.stateManager.retrieve('enable_r18');
+        return value === true;
     }
-    async getR18() {
-        return await this.stateManager.retrieve('r18') ?? false;
+    async getR18QueryValue() {
+        return (await this.isR18Enabled()) ? 'true' : 'false';
     }
-    async getAPI(url) {
-        const request = App.createRequest({
-            url: url,
-            method: 'GET',
-        });
-        const response = await this.requestManager.schedule(request, 1);
-        let isCloudflareError = response.status === 403 || response.status === 503;
-        if (!isCloudflareError && response.data) {
-            // response.data may be a string (raw JSON) or already parsed object
-            let dataObj = null;
-            if (typeof response.data === 'string') {
-                try {
-                    dataObj = JSON.parse(response.data);
-                }
-                catch (e) {
-                    // Not valid JSON — might be HTML from Cloudflare challenge page
-                    if (response.data.includes('cf-turnstile') || response.data.includes('challenge-platform')) {
-                        isCloudflareError = true;
-                    }
-                }
-            }
-            else {
-                dataObj = response.data;
-            }
-            if (dataObj && (dataObj.statusCode === 403 || dataObj.message === 'Forbidden')) {
-                isCloudflareError = true;
-            }
-        }
-        if (isCloudflareError) {
+    cloudflareError(status) {
+        if (status == 503 || status == 403) {
             throw new Error(`CLOUDFLARE BYPASS ERROR:\nPlease go to home page ${exports.YuriGardenInfo.name} source and press the cloud icon.`);
         }
-        return typeof response.data === 'string' ? response.data : JSON.stringify(response.data);
     }
-    async getCloudflareBypassRequestAsync() {
-        // Must load a chapter reader page — this triggers the Cloudflare Turnstile
-        // challenge that protects the api.yurigarden.com/api/chapters/pages/ endpoint.
-        // The homepage does NOT trigger this challenge.
-        // The cf_clearance cookie is set on .yurigarden.com (all subdomains).
-        return App.createRequest({
-            url: `${DOMAIN}/comic/1170/9338`,
-            method: 'GET',
-            headers: {
-                'referer': `${DOMAIN}/`,
-                'origin': DOMAIN,
-                'user-agent': await this.requestManager.getDefaultUserAgent()
-            }
-        });
+    getMangaShareUrl(mangaId) {
+        return `${DOMAIN}comic/${extractMangaId(mangaId)}`;
     }
     async getSourceMenu() {
         return App.createDUISection({
             id: 'main',
-            header: 'Source Settings',
-            isHidden: false,
+            header: 'YuriGarden Settings',
             rows: async () => [
-                App.createDUISwitch({
-                    id: 'r18',
-                    label: 'Enable R18 Content',
+                App.createDUISelect({
+                    id: 'adult_content',
+                    label: '18+ Content',
+                    options: ['off', 'on'],
+                    allowsMultiselect: false,
                     value: App.createDUIBinding({
-                        get: async () => await this.stateManager.retrieve('r18') ?? false,
-                        set: async (newValue) => await this.stateManager.store('r18', newValue),
+                        get: async () => [(await this.isR18Enabled()) ? 'on' : 'off'],
+                        set: async (value) => {
+                            await this.stateManager.store('enable_r18', value[0] === 'on');
+                        },
                     }),
+                    labelResolver: async (option) => option === 'on' ? 'Show 18+ titles' : 'Hide 18+ titles',
                 }),
             ],
+            isHidden: false,
         });
     }
+    async getJSON(url) {
+        const request = App.createRequest({
+            url,
+            method: 'GET',
+        });
+        const response = await this.requestManager.schedule(request, 1);
+        this.cloudflareError(response.status);
+        const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+        // Also check for application-level 403 (body contains statusCode:403)
+        if (data && typeof data === 'object' && (data.statusCode === 403 || data.message === 'Forbidden')) {
+            throw new Error(`CLOUDFLARE BYPASS ERROR:\nPlease go to home page ${exports.YuriGardenInfo.name} source and press the cloud icon.`);
+        }
+        return data;
+    }
+    async getCloudflareBypassRequestAsync() {
+        // Must load a chapter reader page — this triggers the Cloudflare Turnstile
+        // challenge that protects the api.yurigarden.com/api/chapters/pages/ endpoint.
+        return App.createRequest({
+            url: `${DOMAIN}comic/1170/9338`,
+            method: 'GET',
+            headers: {
+                referer: DOMAIN,
+                origin: DOMAIN.replace(/\/$/, ''),
+                'user-agent': await this.requestManager.getDefaultUserAgent(),
+            },
+        });
+    }
+    toPartialManga(comic) {
+        return App.createPartialSourceManga({
+            mangaId: String(comic.id),
+            image: normalizeImageUrl(comic.thumbnail),
+            title: String(comic.title ?? 'Unknown title'),
+            subtitle: comic.latestChapter?.name
+                ? `Chapter ${comic.latestChapter.order}${comic.latestChapter.name ? ` - ${comic.latestChapter.name}` : ''}`
+                : undefined,
+        });
+    }
+    async getSearchTags() {
+        const systems = await this.getJSON(`${API_DOMAIN}resources/systems_vi.json`);
+        const genreSource = systems?.genres ?? {};
+        const tags = Object.entries(genreSource).map(([key, value]) => {
+            const label = typeof value === 'string'
+                ? value
+                : String(value?.name ?? value?.label ?? key);
+            return App.createTag({ id: key, label });
+        });
+        return [
+            App.createTagSection({
+                id: 'genres',
+                label: 'Genres',
+                tags,
+            }),
+        ];
+    }
     async getMangaDetails(mangaId) {
-        const json = JSON.parse(await this.getAPI(`${API_DOMAIN}/api/comics/${mangaId}`));
-        return this.parser.parseMangaDetails(json, mangaId);
+        const id = extractMangaId(mangaId);
+        const comic = await this.getJSON(`${API_DOMAIN}api/comics/${id}`);
+        const tags = (comic.genres ?? []).map((genre) => App.createTag({
+            id: genre,
+            label: genre,
+        }));
+        const desc = [
+            comic.description,
+            Array.isArray(comic.anotherNames) && comic.anotherNames.length > 0
+                ? `Alternative names: ${comic.anotherNames.join(', ')}`
+                : undefined,
+        ].filter(Boolean).join('\n\n');
+        return App.createSourceManga({
+            id: String(comic.id),
+            mangaInfo: App.createMangaInfo({
+                titles: [String(comic.title ?? '')],
+                image: normalizeImageUrl(comic.thumbnail),
+                author: Array.isArray(comic.authors) ? comic.authors.map((x) => x?.name).filter(Boolean).join(', ') : '',
+                artist: Array.isArray(comic.artists) ? comic.artists.map((x) => x?.name).filter(Boolean).join(', ') : '',
+                desc,
+                status: mapStatus(comic.status),
+                tags: [App.createTagSection({ id: 'genres', label: 'Genres', tags })],
+            }),
+        });
     }
     async getChapters(mangaId) {
-        const json = JSON.parse(await this.getAPI(`${API_DOMAIN}/api/chapters/comic/${mangaId}`));
-        return this.parser.parseChapterList(json);
+        const id = extractMangaId(mangaId);
+        const chapters = await this.getJSON(`${API_DOMAIN}api/chapters/comic/${id}`);
+        return [...chapters]
+            .sort((a, b) => Number(a.order) - Number(b.order))
+            .map((chapter) => {
+            const order = Number(chapter.order ?? 0);
+            const suffix = String(chapter.name ?? '').trim();
+            const name = suffix ? `Chapter ${order} - ${suffix}` : `Chapter ${order}`;
+            return App.createChapter({
+                id: String(chapter.id),
+                chapNum: order,
+                name,
+                langCode: '🇻🇳',
+                time: new Date(Number(chapter.publishedAt ?? chapter.lastUpdated ?? Date.now())),
+            });
+        });
     }
     async getChapterDetails(mangaId, chapterId) {
-        const json = JSON.parse(await this.getAPI(`${API_DOMAIN}/api/chapters/pages/${chapterId}`));
-        const pages = this.parser.parseChapterDetails(json);
+        const normalizedMangaId = extractMangaId(mangaId);
+        const normalizedChapterId = extractChapterId(chapterId);
+        const fetchPayload = async (useEdit) => {
+            const request = App.createRequest({
+                url: `${API_DOMAIN}api/chapters/pages/${normalizedChapterId}${useEdit ? '?edit=true' : ''}`,
+                method: 'GET',
+            });
+            const response = await this.requestManager.schedule(request, 1);
+            this.cloudflareError(response.status);
+            const rawPayload = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+            return normalizeChapterPagesPayload(rawPayload);
+        };
+        // First try: normal fetch
+        const payload = await fetchPayload(false);
+        let pages = extractPagesFromPayload(payload, false);
+        // If images are scrambled (R18 content), try the ?edit=true endpoint
+        // which returns unscrambled original images
+        if (payloadHasScrambleHints(payload)) {
+            try {
+                const editPayload = await fetchPayload(true);
+                const editPages = extractPagesFromPayload(editPayload, true);
+                if (editPages.length > 0)
+                    pages = editPages;
+            }
+            catch {
+                // Keep default page URLs when edit endpoint is unavailable.
+            }
+        }
+        if (!pages.length) {
+            const statusCode = Number(payload?.statusCode ?? payload?.data?.statusCode ?? 0);
+            const message = String(payload?.message ?? payload?.data?.message ?? '').trim();
+            if (statusCode === 403 || /forbidden|verify|turnstile|password/i.test(message)) {
+                throw new Error(`CLOUDFLARE BYPASS ERROR:\nPlease go to home page ${exports.YuriGardenInfo.name} source and press the cloud icon.`);
+            }
+            throw new Error(`No pages found for this chapter`);
+        }
         return App.createChapterDetails({
-            id: chapterId,
-            mangaId: mangaId,
-            pages: pages,
+            id: normalizedChapterId,
+            mangaId: normalizedMangaId,
+            pages,
         });
     }
     async getSearchResults(query, metadata) {
-        let page = metadata?.page ?? 1;
-        let isFetchingR18 = metadata?.isFetchingR18 ?? false;
-        const r18Enabled = await this.getR18();
-        const tags = query.includedTags?.map(tag => tag.id) ?? [];
-        let statusFilter = '';
-        const genreTags = [];
-        for (const tag of tags) {
-            if (tag.startsWith('status.')) {
-                statusFilter = tag.split('.')[1] ?? '';
-            }
-            else {
-                genreTags.push(tag);
-            }
-        }
-        let url = `${API_DOMAIN}/api/comics?page=${page}&limit=20`;
-        if (isFetchingR18) {
-            url += `&r18=true`;
-        }
-        if (query.title) {
-            url += `&search=${encodeURIComponent(query.title)}`;
-        }
-        if (statusFilter) {
-            url += `&status=${statusFilter}`;
-        }
-        if (genreTags.length > 0) {
-            url += `&genres=${genreTags.join(',')}`;
-        }
-        const json = JSON.parse(await this.getAPI(url));
-        const tiles = this.parser.parseSearchResults(json);
-        const totalPages = json.totalPages ?? 1;
-        if (page < totalPages) {
-            metadata = { page: page + 1, isFetchingR18: isFetchingR18 };
-        }
-        else if (!isFetchingR18 && r18Enabled) {
-            // Switch to fetching R18
-            metadata = { page: 1, isFetchingR18: true };
-        }
-        else {
-            metadata = undefined;
-        }
+        const page = metadata?.page ?? 1;
+        const limit = 12;
+        const title = (query.title ?? '').trim();
+        const r18 = await this.getR18QueryValue();
+        const url = `${API_DOMAIN}api/comics?${buildComicsQuery({
+            page,
+            limit,
+            full: true,
+            search: title || undefined,
+            r18,
+        })}`;
+        const payload = await this.getJSON(url);
+        const allResults = (payload.comics ?? []).map((comic) => this.toPartialManga(comic));
+        const selectedGenres = new Set((query.includedTags ?? []).map((tag) => tag.id));
+        const results = selectedGenres.size
+            ? allResults.filter((_, idx) => {
+                const comic = payload.comics[idx];
+                const genres = comic?.genres ?? [];
+                for (const genre of genres) {
+                    if (selectedGenres.has(genre))
+                        return true;
+                }
+                return false;
+            })
+            : allResults;
+        const nextMetadata = page < Number(payload.totalPages ?? 1) ? { page: page + 1 } : undefined;
         return App.createPagedResults({
-            results: tiles,
-            metadata
+            results,
+            metadata: nextMetadata,
         });
     }
     async getHomePageSections(sectionCallback) {
-        console.log('YuriGarden Running...');
-        const r18Enabled = await this.getR18();
+        const r18 = await this.getR18QueryValue();
         const sections = [
-            App.createHomeSection({ id: 'new_updated', title: 'Mới Cập Nhật', containsMoreItems: true, type: types_1.HomeSectionType.singleRowNormal }),
+            App.createHomeSection({ id: 'random', title: 'Ngẫu nhiên', containsMoreItems: false, type: types_1.HomeSectionType.singleRowNormal }),
+            App.createHomeSection({ id: 'latest', title: 'Mới cập nhật', containsMoreItems: true, type: types_1.HomeSectionType.singleRowNormal }),
+            App.createHomeSection({ id: 'trending', title: 'Xu hướng', containsMoreItems: false, type: types_1.HomeSectionType.singleRowNormal }),
         ];
-        if (r18Enabled) {
-            sections.push(App.createHomeSection({ id: 'new_updated_18', title: 'Mới Cập Nhật (18+)', containsMoreItems: true, type: types_1.HomeSectionType.singleRowNormal }));
-        }
         for (const section of sections) {
             sectionCallback(section);
-            let url;
             switch (section.id) {
-                case 'new_updated':
-                    url = `${API_DOMAIN}/api/comics?page=1&limit=20`;
+                case 'random': {
+                    const randomComics = await this.getJSON(`${API_DOMAIN}api/comics/random?r18=${r18}&allowR18=${r18}`);
+                    section.items = randomComics.map((comic) => this.toPartialManga(comic));
                     break;
-                case 'new_updated_18':
-                    url = `${API_DOMAIN}/api/comics?page=1&limit=20&r18=true`;
+                }
+                case 'latest': {
+                    const payload = await this.getJSON(`${API_DOMAIN}api/comics?${buildComicsQuery({
+                        page: 1,
+                        limit: 12,
+                        full: true,
+                        r18,
+                    })}`);
+                    section.items = (payload.comics ?? []).map((comic) => this.toPartialManga(comic));
                     break;
-                default:
-                    throw new Error('Invalid home section ID');
-            }
-            const json = JSON.parse(await this.getAPI(url));
-            switch (section.id) {
-                case 'new_updated':
-                case 'new_updated_18':
-                    section.items = this.parser.parseSearchResults(json);
+                }
+                case 'trending': {
+                    const trending = await this.getJSON(`${API_DOMAIN}api/comics/rank/trending?viewType=view&trendingType=day&r18=${r18}&allowR18=${r18}`);
+                    section.items = trending.map((comic) => this.toPartialManga(comic));
                     break;
+                }
             }
             sectionCallback(section);
         }
     }
     async getViewMoreItems(homepageSectionId, metadata) {
-        const page = metadata?.page ?? 1;
-        let url = '';
-        switch (homepageSectionId) {
-            case 'new_updated':
-                url = `${API_DOMAIN}/api/comics?page=${page}&limit=20`;
-                break;
-            case 'new_updated_18':
-                url = `${API_DOMAIN}/api/comics?page=${page}&limit=20&r18=true`;
-                break;
-            default:
-                throw new Error('Requested to getViewMoreItems for a section ID which doesn\'t exist');
+        if (homepageSectionId !== 'latest') {
+            throw new Error('Requested to getViewMoreItems for a section ID which does not support pagination.');
         }
-        const json = JSON.parse(await this.getAPI(url));
-        const manga = this.parser.parseSearchResults(json);
-        const totalPages = json.totalPages ?? 1;
-        metadata = (page < totalPages) ? { page: page + 1 } : undefined;
+        const page = metadata?.page ?? 1;
+        const limit = 12;
+        const r18 = await this.getR18QueryValue();
+        const payload = await this.getJSON(`${API_DOMAIN}api/comics?${buildComicsQuery({
+            page,
+            limit,
+            full: true,
+            r18,
+        })}`);
+        const results = (payload.comics ?? []).map((comic) => this.toPartialManga(comic));
+        const nextMetadata = page < Number(payload.totalPages ?? 1) ? { page: page + 1 } : undefined;
         return App.createPagedResults({
-            results: manga,
-            metadata
+            results,
+            metadata: nextMetadata,
         });
-    }
-    async getSearchTags() {
-        return this.parser.parseTags();
     }
 }
 exports.YuriGarden = YuriGarden;
 
-},{"./YuriGardenParser":101,"@paperback/types":61}],100:[function(require,module,exports){
-"use strict";
-/**
- * YuriGarden Pages Decryptor
- *
- * Reverse-engineered from common-DZWC264q.js
- * The pages API returns AES-CBC encrypted data when { encrypted: true, data: "..." }
- * This module decrypts it and decodes the scramble keys.
- */
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.decryptPagesResponse = void 0;
-const crypto_js_1 = __importDefault(require("crypto-js"));
-// XOR'd byte arrays that produce the decryption passphrase
-const w = [84, 122, 83, 44];
-const S = [53, 45, 64, 230];
-const E = [220, 207, 245, 148];
-const U = [184, 136, 188, 119];
-const K = [18, 35, 52, 69];
-const O = [86, 103, 120, 137];
-const T = [154, 171, 188, 205];
-const v = [222, 239, 240, 1];
-/**
- * Reconstruct the AES passphrase by XOR'ing byte arrays
- * Produces: "FYgicJ8oFdIYfgLv"
- */
-function getPassphrase() {
-    const t = [];
-    for (let e = 0; e < 4; e++)
-        t.push((w[e] ?? 0) ^ (K[e] ?? 0));
-    for (let e = 0; e < 4; e++)
-        t.push((S[e] ?? 0) ^ (O[e] ?? 0));
-    for (let e = 0; e < 4; e++)
-        t.push((E[e] ?? 0) ^ (T[e] ?? 0));
-    for (let e = 0; e < 4; e++)
-        t.push((U[e] ?? 0) ^ (v[e] ?? 0));
-    return String.fromCharCode(...t);
-}
-/**
- * Convert byte array to CryptoJS WordArray
- */
-function toWordArray(bytes, sigBytes) {
-    const words = [];
-    const len = sigBytes ?? bytes.length;
-    for (let i = 0; i < bytes.length; i += 4) {
-        words.push((((bytes[i] ?? 0) << 24) |
-            ((bytes[i + 1] ?? 0) << 16) |
-            ((bytes[i + 2] ?? 0) << 8) |
-            ((bytes[i + 3] ?? 0))) >>> 0);
-    }
-    return crypto_js_1.default.lib.WordArray.create(words, len);
-}
-/**
- * Convert CryptoJS WordArray to byte array
- */
-function fromWordArray(wordArray) {
-    const bytes = [];
-    const sigBytes = wordArray.sigBytes;
-    for (let i = 0; i < sigBytes; i++) {
-        const word = wordArray.words[i >>> 2];
-        bytes.push((word >>> (24 - (i % 4) * 8)) & 0xff);
-    }
-    return bytes;
-}
-/**
- * Derive AES key and IV from passphrase and salt using MD5
- * This implements OpenSSL's EVP_BytesToKey-like derivation
- */
-function deriveKeyIV(passphrase, salt) {
-    const concat = (a, b) => [...a, ...b];
-    const md5Hash = (data) => {
-        const wa = toWordArray(data);
-        const hash = crypto_js_1.default.MD5(wa).toString(crypto_js_1.default.enc.Hex);
-        const result = [];
-        for (let i = 0; i < hash.length; i += 2) {
-            result.push(parseInt(hash.slice(i, i + 2), 16));
-        }
-        return result;
-    };
-    const passphraseBytes = Array.from(passphrase).map(c => c.charCodeAt(0));
-    const saltBytes = Array.from(salt);
-    const a = concat(passphraseBytes, saltBytes);
-    const c = md5Hash(a); // First MD5 round
-    const i = concat(c, concat(passphraseBytes, saltBytes));
-    const f = md5Hash(i); // Second MD5 round
-    const l = concat(f, concat(passphraseBytes, saltBytes));
-    const A = md5Hash(l); // Third MD5 round
-    return {
-        key: [...c, ...f],
-        iv: A // 16 bytes (128-bit IV)
-    };
-}
-/**
- * Decrypt AES-CBC encrypted base64 data
- * Format: "Salted__" (8 bytes) + salt (8 bytes) + ciphertext
- */
-function decryptAES(base64Data, passphrase) {
-    const raw = crypto_js_1.default.enc.Base64.parse(base64Data);
-    const rawBytes = fromWordArray(raw);
-    if (rawBytes.length < 16) {
-        throw new Error('Encrypted data too short');
-    }
-    // Skip "Salted__" header (8 bytes), extract salt (next 8 bytes)
-    const salt = new Uint8Array(rawBytes.slice(8, 16));
-    const cipherBytes = rawBytes.slice(16);
-    const { key, iv } = deriveKeyIV(passphrase, salt);
-    const keyWA = toWordArray(key, 32);
-    const ivWA = toWordArray(iv, 16);
-    const cipherWA = toWordArray(cipherBytes, cipherBytes.length);
-    const decrypted = crypto_js_1.default.AES.decrypt({ ciphertext: cipherWA }, keyWA, {
-        iv: ivWA,
-        mode: crypto_js_1.default.mode.CBC,
-        padding: crypto_js_1.default.pad.Pkcs7
-    });
-    return decrypted.toString(crypto_js_1.default.enc.Utf8);
-}
-/**
- * Base58 alphabet (no 0, I, O, l)
- */
-const BASE58_CHARS = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-/**
- * Factorials for permutation decoding
- */
-const FACTORIALS = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800];
-/**
- * Convert base58 string to number
- */
-function base58Decode(str) {
-    let value = 0;
-    for (const char of str) {
-        const index = BASE58_CHARS.indexOf(char);
-        if (index < 0)
-            throw new Error('Invalid base58 character');
-        value = value * 58 + index;
-    }
-    return value;
-}
-/**
- * Convert factoradic number to permutation array
- * (Lehmer code to permutation)
- */
-function factoradicToPermutation(value, size = 10) {
-    const available = Array.from({ length: size }, (_, i) => i);
-    const result = [];
-    for (let i = size - 1; i >= 0; i--) {
-        const factorial = FACTORIALS[i] ?? 1;
-        const index = Math.floor(value / factorial);
-        value = value % factorial;
-        result.push(available.splice(index, 1)[0]);
-    }
-    return result;
-}
-/**
- * Decode a single scramble key string (format: "YGK_<base58><checksum>")
- * Returns array of 10 integers representing the strip order
- */
-function decodeScrambleKey(key) {
-    if (!/^H[1-9A-HJ-NP-Za-km-z]+$/.test(key)) {
-        throw new Error('Invalid key format');
-    }
-    const body = key.slice(1, -1); // Remove prefix 'H' and checksum
-    const checksum = key.slice(-1); // Last character is checksum
-    const value = base58Decode(body);
-    // Verify checksum
-    if (BASE58_CHARS[value % 58] !== checksum) {
-        throw new Error('Checksum mismatch');
-    }
-    return factoradicToPermutation(value, 10);
-}
-/**
- * Decode array of scramble key strings to permutation arrays
- */
-function decodeScrambleKeys(keys) {
-    return keys.map(key => decodeScrambleKey(key.slice(4))); // Remove "YGK_" prefix
-}
-/**
- * Main decryption function for pages API response
- * Handles both encrypted and unencrypted responses
- */
-function decryptPagesResponse(data) {
-    let parsed;
-    if (data?.encrypted === true && typeof data?.data === 'string') {
-        // Encrypted response - decrypt it
-        const passphrase = getPassphrase();
-        const decryptedStr = decryptAES(data.data, passphrase);
-        parsed = JSON.parse(decryptedStr);
-    }
-    else {
-        // Not encrypted - use as-is
-        parsed = data;
-    }
-    // Decode scramble keys if present
-    const keyStrings = parsed.pages
-        ?.map((p) => p.key)
-        .filter((k) => k !== undefined) ?? [];
-    const decodedKeys = {};
-    if (keyStrings.length > 0) {
-        try {
-            const decoded = decodeScrambleKeys(keyStrings);
-            parsed.pages?.forEach((page) => {
-                if (page.key) {
-                    const idx = keyStrings.indexOf(page.key);
-                    if (idx >= 0 && decoded[idx]) {
-                        decodedKeys[page.id] = [...decoded[idx]];
-                    }
-                }
-            });
-        }
-        catch (e) {
-            // Scramble key decoding failed - continue without it
-        }
-    }
-    return {
-        ...parsed,
-        pages: parsed?.pages?.map((p) => ({
-            ...p,
-            url: (p.url ?? '').replace('_credit', ''),
-            decoded: decodedKeys[p.id] ?? undefined
-        })) ?? []
-    };
-}
-exports.decryptPagesResponse = decryptPagesResponse;
-
-},{"crypto-js":73}],101:[function(require,module,exports){
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.Parser = void 0;
-const YuriGardenDecryptor_1 = require("./YuriGardenDecryptor");
-const STORAGE_BASE = 'https://db.yurigarden.com/storage/v1/object/public/yuri-garden-store/';
-class Parser {
-    /**
-     * Resolves a thumbnail URL to a full URL.
-     * Some thumbnails are already absolute URLs, others are relative paths.
-     */
-    resolveThumbnailUrl(thumbnail) {
-        if (thumbnail.startsWith('http')) {
-            return thumbnail;
-        }
-        return `${STORAGE_BASE}${thumbnail}`;
-    }
-    parseMangaDetails(json, mangaId) {
-        const tags = [];
-        if (json.genres && Array.isArray(json.genres)) {
-            for (const genre of json.genres) {
-                if (!genre)
-                    continue;
-                tags.push(App.createTag({ label: genre, id: genre }));
-            }
-        }
-        const titles = [json.title];
-        if (json.anotherNames && Array.isArray(json.anotherNames)) {
-            for (const name of json.anotherNames) {
-                if (name)
-                    titles.push(name);
-            }
-        }
-        const author = json.authors?.map((a) => typeof a === 'string' ? a : a.name).join(', ') ?? '';
-        const artist = json.artists?.map((a) => typeof a === 'string' ? a : a.name).join(', ') ?? '';
-        const image = this.resolveThumbnailUrl(json.thumbnail ?? '');
-        const desc = json.description ?? '';
-        let status = 'Unknown';
-        switch (json.status) {
-            case 'ongoing':
-                status = 'Ongoing';
-                break;
-            case 'completed':
-                status = 'Completed';
-                break;
-            case 'oncoming':
-                status = 'Oncoming';
-                break;
-        }
-        return App.createSourceManga({
-            id: mangaId,
-            mangaInfo: App.createMangaInfo({
-                titles,
-                author,
-                artist,
-                image,
-                desc,
-                status,
-                tags: [App.createTagSection({ id: '0', label: 'genres', tags })]
-            })
-        });
-    }
-    parseChapterList(json) {
-        const chapters = [];
-        for (const obj of json) {
-            const id = String(obj.id);
-            const chapNum = parseFloat(String(obj.order));
-            const name = obj.name || `Chap ${obj.order}`;
-            const time = obj.lastUpdated ? new Date(obj.lastUpdated) : new Date(obj.publishedAt);
-            const group = obj.team?.name ?? '';
-            chapters.push(App.createChapter({
-                id,
-                chapNum,
-                name,
-                langCode: '🇻🇳',
-                time,
-                group,
-            }));
-        }
-        if (chapters.length == 0) {
-            throw new Error('No chapters found');
-        }
-        return chapters;
-    }
-    parseChapterDetails(json) {
-        const pages = [];
-        // Handle API response formats:
-        // 1. { encrypted: true, data: "<base64>" }  (AES-CBC encrypted)
-        // 2. { pages: [{ id, url, key? }, ...], isLocked?, passwordHint? }
-        // 3. { pages: ["url1", "url2", ...] }
-        // 4. ["url1", "url2", ...]
-        // 5. { statusCode: 403, message: "Forbidden" }  (Cloudflare block)
-        if (json.statusCode === 403 || json.message === 'Forbidden') {
-            return pages; // Empty - Cloudflare blocked
-        }
-        // Decrypt if encrypted
-        let decrypted;
-        try {
-            decrypted = (0, YuriGardenDecryptor_1.decryptPagesResponse)(json);
-        }
-        catch (e) {
-            // Decryption failed - try using raw data
-            decrypted = json;
-        }
-        let pagesArray = Array.isArray(decrypted) ? decrypted : (decrypted.pages ?? []);
-        if (!Array.isArray(pagesArray)) {
-            return pages;
-        }
-        // If chapter is locked and no pages returned
-        if (decrypted.isLocked && pagesArray.length === 0) {
-            return pages;
-        }
-        for (const page of pagesArray) {
-            let url = '';
-            if (typeof page === 'string') {
-                url = page;
-            }
-            else if (page && typeof page === 'object') {
-                // After decryption, pages have: { id, url, decoded? }
-                // where decoded is the permutation array for image strip reordering
-                // NOTE: Paperback cannot descramble images (no Canvas API),
-                // so we just use the URL as-is. Images may appear shuffled.
-                url = page.url ?? '';
-            }
-            if (url) {
-                pages.push(url.startsWith('http') ? url : `${STORAGE_BASE}${url}`);
-            }
-        }
-        return pages;
-    }
-    parseSearchResults(json) {
-        const comics = [];
-        if (!json.comics || !Array.isArray(json.comics)) {
-            return comics;
-        }
-        for (const item of json.comics) {
-            const mangaId = String(item.id);
-            const title = item.title ?? '';
-            const image = this.resolveThumbnailUrl(item.thumbnail ?? '');
-            const subtitle = item.authors?.join(', ') ?? '';
-            comics.push(App.createPartialSourceManga({
-                mangaId,
-                image,
-                title,
-                subtitle,
-            }));
-        }
-        return comics;
-    }
-    parseTags() {
-        const genres = [
-            { id: 'yuri', label: 'Yuri' },
-            { id: 'romance', label: 'Romance' },
-            { id: 'comedy', label: 'Comedy' },
-            { id: 'slice-of-life', label: 'Slice of Life' },
-            { id: 'school-life', label: 'School Life' },
-            { id: 'ecchi', label: 'Ecchi' },
-            { id: 'action', label: 'Action' },
-            { id: 'drama', label: 'Drama' },
-            { id: 'fantasy', label: 'Fantasy' },
-            { id: 'sci-fi', label: 'Sci-Fi' },
-            { id: 'gender-bender', label: 'Gender Bender' },
-            { id: 'isekai', label: 'Isekai' },
-        ];
-        const status = [
-            { id: 'status.ongoing', label: 'Đang tiến hành' },
-            { id: 'status.completed', label: 'Đã hoàn thành' },
-        ];
-        return [
-            App.createTagSection({ id: '0', label: 'Thể Loại', tags: genres.map(x => App.createTag(x)) }),
-            App.createTagSection({ id: '1', label: 'Tình Trạng', tags: status.map(x => App.createTag(x)) }),
-        ];
-    }
-}
-exports.Parser = Parser;
-
-},{"./YuriGardenDecryptor":100}]},{},[99])(99)
+},{"@paperback/types":61,"crypto-js":73}]},{},[99])(99)
 });
