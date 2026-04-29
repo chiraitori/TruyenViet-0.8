@@ -248,65 +248,20 @@ const toEntries = (value: any): any[] => {
     return [];
 };
 
-const payloadHasScrambleHints = (payload: any): boolean => {
-    const pageEntries = toEntries(payload?.pages);
-    for (const entry of pageEntries) {
-        if (!entry || typeof entry !== 'object') continue;
-        if (typeof entry.key === 'string' && entry.key.length > 0) return true;
-        if (Array.isArray(entry.decoded) && entry.decoded.length > 0) return true;
-    }
-    return false;
-};
 
-const extractPagesFromPayload = (payload: any, preferUnscrambled: boolean): string[] => {
+
+const extractPagesFromPayload = (payload: any): any[] => {
     const extractImageValue = (entry: any): string | undefined => {
         if (!entry) return undefined;
         if (typeof entry === 'string') return entry;
         if (typeof entry !== 'object') return undefined;
 
-        // Try unscrambled/original URL fields first
-        const rawCandidate =
-            entry.originalUrl ??
-            entry.originUrl ??
-            entry.rawUrl ??
-            entry.fullUrl ??
-            entry.imageUrl ??
-            entry.fileUrl ??
-            entry.origin ??
-            entry.original ??
-            entry.raw ??
-            entry?.page?.originalUrl ??
-            entry?.page?.originUrl ??
-            entry?.page?.rawUrl ??
-            entry?.page?.original ??
-            entry?.page?.origin;
-
-        if (typeof rawCandidate === 'string' && rawCandidate.trim().length > 0) {
-            return rawCandidate;
-        }
-
-        if (preferUnscrambled) {
-            const imageCandidates = [
-                entry?.images?.original,
-                entry?.images?.raw,
-                entry?.images?.full,
-                entry?.image?.original,
-                entry?.image?.raw,
-                Array.isArray(entry?.images) ? entry.images[0] : undefined,
-            ];
-
-            for (const candidate of imageCandidates) {
-                if (typeof candidate === 'string' && candidate.trim().length > 0) {
-                    return candidate;
-                }
-            }
-        }
-
-        // Fall back to standard URL field
+        // Standard URL field
         const candidate =
             entry.url ??
             entry.image ??
             entry.src ??
+            entry.imageUrl ??
             entry.path ??
             entry.file ??
             entry.link ??
@@ -329,10 +284,29 @@ const extractPagesFromPayload = (payload: any, preferUnscrambled: boolean): stri
 
     return candidateBuckets
         .flatMap((bucket) => toEntries(bucket))
-        .map((entry: any) => extractImageValue(entry))
-        .filter((value: string | undefined): value is string => !!value)
-        .map((value: string) => normalizeImageUrl(value))
-        .filter((value: string) => !!value);
+        .map((entry: any) => {
+            const value = extractImageValue(entry);
+            if (!value) return undefined;
+
+            const normalizedUrl = normalizeImageUrl(value);
+            if (!normalizedUrl) return undefined;
+
+            // Include decoded permutation array for scrambled pages
+            // App runtime (ExtensionRunner/HeadlessRuntime) uses this for DRM descrambling
+            const decoded = Array.isArray(entry?.decoded)
+                ? entry.decoded.filter((item: any) => Number.isInteger(item))
+                : undefined;
+
+            if (decoded && decoded.length > 0) {
+                return {
+                    url: normalizedUrl,
+                    decoded,
+                };
+            }
+
+            return normalizedUrl;
+        })
+        .filter((value: any) => !!value);
 };
 
 // ── Query Helpers ────────────────────────────────────────────────────
@@ -569,33 +543,19 @@ export class YuriGarden implements ChapterProviding, MangaProviding, SearchResul
         const normalizedMangaId = extractMangaId(mangaId);
         const normalizedChapterId = extractChapterId(chapterId);
 
-        const fetchPayload = async (useEdit: boolean): Promise<any> => {
-            const request = App.createRequest({
-                url: `${API_DOMAIN}api/chapters/pages/${normalizedChapterId}${useEdit ? '?edit=true' : ''}`,
-                method: 'GET',
-            });
-            const response = await this.requestManager.schedule(request, 1);
-            this.cloudflareError(response.status);
+        const request = App.createRequest({
+            url: `${API_DOMAIN}api/chapters/pages/${normalizedChapterId}`,
+            method: 'GET',
+        });
+        const response = await this.requestManager.schedule(request, 1);
+        this.cloudflareError(response.status);
 
-            const rawPayload = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
-            return normalizeChapterPagesPayload(rawPayload);
-        };
+        const rawPayload = typeof response.data === 'string' ? JSON.parse(response.data) : response.data;
+        const payload = normalizeChapterPagesPayload(rawPayload);
 
-        // First try: normal fetch
-        const payload = await fetchPayload(false);
-        let pages = extractPagesFromPayload(payload, false);
-
-        // If images are scrambled (R18 content), try the ?edit=true endpoint
-        // which returns unscrambled original images
-        if (payloadHasScrambleHints(payload)) {
-            try {
-                const editPayload = await fetchPayload(true);
-                const editPages = extractPagesFromPayload(editPayload, true);
-                if (editPages.length > 0) pages = editPages;
-            } catch {
-                // Keep default page URLs when edit endpoint is unavailable.
-            }
-        }
+        // extractPagesFromPayload returns {url, decoded} objects for scrambled pages
+        // App runtime (ExtensionRunner/HeadlessRuntime) handles descrambling via DRM pipeline
+        const pages = extractPagesFromPayload(payload);
 
         if (!pages.length) {
             const statusCode = Number(payload?.statusCode ?? payload?.data?.statusCode ?? 0);
